@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pottery_diary/database/app_database.dart';
+import 'package:pottery_diary/models/stage_status.dart';
 import 'package:pottery_diary/models/stage_type.dart';
 import 'package:pottery_diary/providers/providers.dart';
 import 'package:pottery_diary/screens/piece_detail_screen.dart';
@@ -75,10 +76,10 @@ class PieceCard extends ConsumerWidget {
                     final stage = stages
                         .where((s) => s.stageType == type.name)
                         .firstOrNull;
+                    final status = StageStatus.fromString(stage?.status);
                     return _StageChip(
                       label: type.shortLabel,
-                      isComplete: stage?.completedAt != null,
-                      isStarted: stage != null,
+                      status: stage == null ? null : status,
                     );
                   }),
                   ...glazes.map(
@@ -134,29 +135,30 @@ class _CoverPhoto extends StatelessWidget {
 }
 
 class _StageChip extends StatelessWidget {
-  const _StageChip({
-    required this.label,
-    required this.isComplete,
-    required this.isStarted,
-  });
+  const _StageChip({required this.label, required this.status});
 
   final String label;
-  final bool isComplete;
-  final bool isStarted;
+  final StageStatus? status; // null = not started
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final bg = isComplete
-        ? scheme.primary.withAlpha(26)
-        : isStarted
-            ? Colors.orange.withAlpha(26)
-            : Colors.grey.withAlpha(20);
-    final fg = isComplete
-        ? scheme.primary
-        : isStarted
-            ? Colors.orange.shade700
-            : Colors.grey.shade500;
+    final Color bg;
+    final Color fg;
+    switch (status) {
+      case StageStatus.complete:
+        bg = scheme.primary.withAlpha(26);
+        fg = scheme.primary;
+      case StageStatus.failed:
+        bg = Colors.red.withAlpha(26);
+        fg = Colors.red.shade700;
+      case StageStatus.inProgress:
+        bg = Colors.orange.withAlpha(26);
+        fg = Colors.orange.shade700;
+      case null:
+        bg = Colors.grey.withAlpha(20);
+        fg = Colors.grey.shade500;
+    }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),

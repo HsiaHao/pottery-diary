@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pottery_diary/database/app_database.dart';
+import 'package:pottery_diary/models/stage_status.dart';
 import 'package:pottery_diary/models/stage_type.dart';
 import 'package:pottery_diary/repositories/piece_repository.dart';
 
@@ -95,16 +96,37 @@ void main() {
       );
     });
 
-    test('completeStage sets completedAt', () async {
+    test('setStageStatus complete sets finishedAt', () async {
       final stageId =
           await repo.createStage(pieceId: pieceId, stageType: StageType.trimmed);
       final before = await repo.getStagesForPiece(pieceId);
-      expect(before.first.completedAt, isNull);
+      expect(before.first.finishedAt, isNull);
 
-      await repo.completeStage(stageId);
+      await repo.setStageStatus(stageId, StageStatus.complete);
 
       final after = await repo.getStagesForPiece(pieceId);
-      expect(after.first.completedAt, isNotNull);
+      expect(after.first.finishedAt, isNotNull);
+      expect(after.first.status, StageStatus.complete.name);
+    });
+
+    test('setStageStatus failed stores reason', () async {
+      final stageId =
+          await repo.createStage(pieceId: pieceId, stageType: StageType.trimmed);
+      await repo.setStageStatus(stageId, StageStatus.failed,
+          failureReason: 'Cracked in kiln');
+      final stages = await repo.getStagesForPiece(pieceId);
+      expect(stages.first.status, StageStatus.failed.name);
+      expect(stages.first.failureReason, 'Cracked in kiln');
+    });
+
+    test('setStageStatus inProgress clears finishedAt', () async {
+      final stageId =
+          await repo.createStage(pieceId: pieceId, stageType: StageType.trimmed);
+      await repo.setStageStatus(stageId, StageStatus.complete);
+      await repo.setStageStatus(stageId, StageStatus.inProgress);
+      final stages = await repo.getStagesForPiece(pieceId);
+      expect(stages.first.finishedAt, isNull);
+      expect(stages.first.status, StageStatus.inProgress.name);
     });
 
     test('deleting a piece cascades to its stages', () async {
@@ -121,33 +143,47 @@ void main() {
 
   group('Photo operations', () {
     late int stageId;
+    late int photoPieceId;
 
     setUp(() async {
-      final pieceId = await repo.createPiece(title: 'Photo Test Piece');
+      photoPieceId = await repo.createPiece(title: 'Photo Test Piece');
       stageId = await repo.createStage(
-        pieceId: pieceId,
+        pieceId: photoPieceId,
         stageType: StageType.trimmed,
       );
     });
 
     test('addPhoto returns a valid id', () async {
-      final id =
-          await repo.addPhoto(stageId: stageId, localPath: '/tmp/photo.jpg');
+      final id = await repo.addPhoto(
+          stageId: stageId, pieceId: photoPieceId, localPath: '/tmp/photo.jpg');
       expect(id, greaterThan(0));
     });
 
     test('getPhotosForStage returns added photos', () async {
       await repo.addPhoto(
-          stageId: stageId, localPath: '/tmp/a.jpg', caption: 'Front');
-      await repo.addPhoto(stageId: stageId, localPath: '/tmp/b.jpg');
+          stageId: stageId,
+          pieceId: photoPieceId,
+          localPath: '/tmp/a.jpg',
+          caption: 'Front');
+      await repo.addPhoto(
+          stageId: stageId, pieceId: photoPieceId, localPath: '/tmp/b.jpg');
       final photos = await repo.getPhotosForStage(stageId);
       expect(photos.length, 2);
       expect(photos.first.caption, 'Front');
     });
 
+    test('addPhoto auto-sets piece cover photo', () async {
+      await repo.addPhoto(
+          stageId: stageId,
+          pieceId: photoPieceId,
+          localPath: '/tmp/cover.jpg');
+      final piece = await repo.getPieceById(photoPieceId);
+      expect(piece!.coverPhotoPath, '/tmp/cover.jpg');
+    });
+
     test('deletePhoto removes the photo', () async {
-      final id =
-          await repo.addPhoto(stageId: stageId, localPath: '/tmp/del.jpg');
+      final id = await repo.addPhoto(
+          stageId: stageId, pieceId: photoPieceId, localPath: '/tmp/del.jpg');
       await repo.deletePhoto(id);
       final photos = await repo.getPhotosForStage(stageId);
       expect(photos, isEmpty);

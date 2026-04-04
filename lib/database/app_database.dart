@@ -30,6 +30,13 @@ class Stages extends Table {
   TextColumn get stageType => text()();
   TextColumn get title => text().nullable()();
   TextColumn get description => text().nullable()();
+  // StageStatus.name: 'inProgress' | 'complete' | 'failed'
+  TextColumn get status =>
+      text().withDefault(const Constant('inProgress'))();
+  TextColumn get failureReason => text().nullable()();
+  // Set when status transitions to complete or failed
+  DateTimeColumn get finishedAt => dateTime().nullable()();
+  // Kept for migration only; use finishedAt + status going forward
   DateTimeColumn get completedAt => dateTime().nullable()();
   DateTimeColumn get recordedAt => dateTime()();
 }
@@ -62,7 +69,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -72,6 +79,16 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(pieces, pieces.clayBody);
             await m.addColumn(pieces, pieces.firingTemp);
             await m.addColumn(stages, stages.title);
+          }
+          if (from < 3) {
+            await m.addColumn(stages, stages.status);
+            await m.addColumn(stages, stages.failureReason);
+            await m.addColumn(stages, stages.finishedAt);
+            // Migrate existing completedAt → finishedAt + status='complete'
+            await customStatement(
+              "UPDATE stages SET finished_at = completed_at, status = 'complete' "
+              'WHERE completed_at IS NOT NULL',
+            );
           }
         },
         beforeOpen: (details) async {

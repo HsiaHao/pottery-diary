@@ -583,6 +583,38 @@ class $StagesTable extends Stages with TableInfo<$StagesTable, Stage> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('inProgress'),
+  );
+  static const VerificationMeta _failureReasonMeta = const VerificationMeta(
+    'failureReason',
+  );
+  @override
+  late final GeneratedColumn<String> failureReason = GeneratedColumn<String>(
+    'failure_reason',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _finishedAtMeta = const VerificationMeta(
+    'finishedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> finishedAt = GeneratedColumn<DateTime>(
+    'finished_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _completedAtMeta = const VerificationMeta(
     'completedAt',
   );
@@ -612,6 +644,9 @@ class $StagesTable extends Stages with TableInfo<$StagesTable, Stage> {
     stageType,
     title,
     description,
+    status,
+    failureReason,
+    finishedAt,
     completedAt,
     recordedAt,
   ];
@@ -661,6 +696,27 @@ class $StagesTable extends Stages with TableInfo<$StagesTable, Stage> {
         ),
       );
     }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    if (data.containsKey('failure_reason')) {
+      context.handle(
+        _failureReasonMeta,
+        failureReason.isAcceptableOrUnknown(
+          data['failure_reason']!,
+          _failureReasonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('finished_at')) {
+      context.handle(
+        _finishedAtMeta,
+        finishedAt.isAcceptableOrUnknown(data['finished_at']!, _finishedAtMeta),
+      );
+    }
     if (data.containsKey('completed_at')) {
       context.handle(
         _completedAtMeta,
@@ -707,6 +763,18 @@ class $StagesTable extends Stages with TableInfo<$StagesTable, Stage> {
         DriftSqlType.string,
         data['${effectivePrefix}description'],
       ),
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      failureReason: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}failure_reason'],
+      ),
+      finishedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}finished_at'],
+      ),
       completedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}completed_at'],
@@ -730,6 +798,9 @@ class Stage extends DataClass implements Insertable<Stage> {
   final String stageType;
   final String? title;
   final String? description;
+  final String status;
+  final String? failureReason;
+  final DateTime? finishedAt;
   final DateTime? completedAt;
   final DateTime recordedAt;
   const Stage({
@@ -738,6 +809,9 @@ class Stage extends DataClass implements Insertable<Stage> {
     required this.stageType,
     this.title,
     this.description,
+    required this.status,
+    this.failureReason,
+    this.finishedAt,
     this.completedAt,
     required this.recordedAt,
   });
@@ -752,6 +826,13 @@ class Stage extends DataClass implements Insertable<Stage> {
     }
     if (!nullToAbsent || description != null) {
       map['description'] = Variable<String>(description);
+    }
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || failureReason != null) {
+      map['failure_reason'] = Variable<String>(failureReason);
+    }
+    if (!nullToAbsent || finishedAt != null) {
+      map['finished_at'] = Variable<DateTime>(finishedAt);
     }
     if (!nullToAbsent || completedAt != null) {
       map['completed_at'] = Variable<DateTime>(completedAt);
@@ -771,6 +852,13 @@ class Stage extends DataClass implements Insertable<Stage> {
       description: description == null && nullToAbsent
           ? const Value.absent()
           : Value(description),
+      status: Value(status),
+      failureReason: failureReason == null && nullToAbsent
+          ? const Value.absent()
+          : Value(failureReason),
+      finishedAt: finishedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(finishedAt),
       completedAt: completedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(completedAt),
@@ -789,6 +877,9 @@ class Stage extends DataClass implements Insertable<Stage> {
       stageType: serializer.fromJson<String>(json['stageType']),
       title: serializer.fromJson<String?>(json['title']),
       description: serializer.fromJson<String?>(json['description']),
+      status: serializer.fromJson<String>(json['status']),
+      failureReason: serializer.fromJson<String?>(json['failureReason']),
+      finishedAt: serializer.fromJson<DateTime?>(json['finishedAt']),
       completedAt: serializer.fromJson<DateTime?>(json['completedAt']),
       recordedAt: serializer.fromJson<DateTime>(json['recordedAt']),
     );
@@ -802,6 +893,9 @@ class Stage extends DataClass implements Insertable<Stage> {
       'stageType': serializer.toJson<String>(stageType),
       'title': serializer.toJson<String?>(title),
       'description': serializer.toJson<String?>(description),
+      'status': serializer.toJson<String>(status),
+      'failureReason': serializer.toJson<String?>(failureReason),
+      'finishedAt': serializer.toJson<DateTime?>(finishedAt),
       'completedAt': serializer.toJson<DateTime?>(completedAt),
       'recordedAt': serializer.toJson<DateTime>(recordedAt),
     };
@@ -813,6 +907,9 @@ class Stage extends DataClass implements Insertable<Stage> {
     String? stageType,
     Value<String?> title = const Value.absent(),
     Value<String?> description = const Value.absent(),
+    String? status,
+    Value<String?> failureReason = const Value.absent(),
+    Value<DateTime?> finishedAt = const Value.absent(),
     Value<DateTime?> completedAt = const Value.absent(),
     DateTime? recordedAt,
   }) => Stage(
@@ -821,6 +918,11 @@ class Stage extends DataClass implements Insertable<Stage> {
     stageType: stageType ?? this.stageType,
     title: title.present ? title.value : this.title,
     description: description.present ? description.value : this.description,
+    status: status ?? this.status,
+    failureReason: failureReason.present
+        ? failureReason.value
+        : this.failureReason,
+    finishedAt: finishedAt.present ? finishedAt.value : this.finishedAt,
     completedAt: completedAt.present ? completedAt.value : this.completedAt,
     recordedAt: recordedAt ?? this.recordedAt,
   );
@@ -833,6 +935,13 @@ class Stage extends DataClass implements Insertable<Stage> {
       description: data.description.present
           ? data.description.value
           : this.description,
+      status: data.status.present ? data.status.value : this.status,
+      failureReason: data.failureReason.present
+          ? data.failureReason.value
+          : this.failureReason,
+      finishedAt: data.finishedAt.present
+          ? data.finishedAt.value
+          : this.finishedAt,
       completedAt: data.completedAt.present
           ? data.completedAt.value
           : this.completedAt,
@@ -850,6 +959,9 @@ class Stage extends DataClass implements Insertable<Stage> {
           ..write('stageType: $stageType, ')
           ..write('title: $title, ')
           ..write('description: $description, ')
+          ..write('status: $status, ')
+          ..write('failureReason: $failureReason, ')
+          ..write('finishedAt: $finishedAt, ')
           ..write('completedAt: $completedAt, ')
           ..write('recordedAt: $recordedAt')
           ..write(')'))
@@ -863,6 +975,9 @@ class Stage extends DataClass implements Insertable<Stage> {
     stageType,
     title,
     description,
+    status,
+    failureReason,
+    finishedAt,
     completedAt,
     recordedAt,
   );
@@ -875,6 +990,9 @@ class Stage extends DataClass implements Insertable<Stage> {
           other.stageType == this.stageType &&
           other.title == this.title &&
           other.description == this.description &&
+          other.status == this.status &&
+          other.failureReason == this.failureReason &&
+          other.finishedAt == this.finishedAt &&
           other.completedAt == this.completedAt &&
           other.recordedAt == this.recordedAt);
 }
@@ -885,6 +1003,9 @@ class StagesCompanion extends UpdateCompanion<Stage> {
   final Value<String> stageType;
   final Value<String?> title;
   final Value<String?> description;
+  final Value<String> status;
+  final Value<String?> failureReason;
+  final Value<DateTime?> finishedAt;
   final Value<DateTime?> completedAt;
   final Value<DateTime> recordedAt;
   const StagesCompanion({
@@ -893,6 +1014,9 @@ class StagesCompanion extends UpdateCompanion<Stage> {
     this.stageType = const Value.absent(),
     this.title = const Value.absent(),
     this.description = const Value.absent(),
+    this.status = const Value.absent(),
+    this.failureReason = const Value.absent(),
+    this.finishedAt = const Value.absent(),
     this.completedAt = const Value.absent(),
     this.recordedAt = const Value.absent(),
   });
@@ -902,6 +1026,9 @@ class StagesCompanion extends UpdateCompanion<Stage> {
     required String stageType,
     this.title = const Value.absent(),
     this.description = const Value.absent(),
+    this.status = const Value.absent(),
+    this.failureReason = const Value.absent(),
+    this.finishedAt = const Value.absent(),
     this.completedAt = const Value.absent(),
     required DateTime recordedAt,
   }) : pieceId = Value(pieceId),
@@ -913,6 +1040,9 @@ class StagesCompanion extends UpdateCompanion<Stage> {
     Expression<String>? stageType,
     Expression<String>? title,
     Expression<String>? description,
+    Expression<String>? status,
+    Expression<String>? failureReason,
+    Expression<DateTime>? finishedAt,
     Expression<DateTime>? completedAt,
     Expression<DateTime>? recordedAt,
   }) {
@@ -922,6 +1052,9 @@ class StagesCompanion extends UpdateCompanion<Stage> {
       if (stageType != null) 'stage_type': stageType,
       if (title != null) 'title': title,
       if (description != null) 'description': description,
+      if (status != null) 'status': status,
+      if (failureReason != null) 'failure_reason': failureReason,
+      if (finishedAt != null) 'finished_at': finishedAt,
       if (completedAt != null) 'completed_at': completedAt,
       if (recordedAt != null) 'recorded_at': recordedAt,
     });
@@ -933,6 +1066,9 @@ class StagesCompanion extends UpdateCompanion<Stage> {
     Value<String>? stageType,
     Value<String?>? title,
     Value<String?>? description,
+    Value<String>? status,
+    Value<String?>? failureReason,
+    Value<DateTime?>? finishedAt,
     Value<DateTime?>? completedAt,
     Value<DateTime>? recordedAt,
   }) {
@@ -942,6 +1078,9 @@ class StagesCompanion extends UpdateCompanion<Stage> {
       stageType: stageType ?? this.stageType,
       title: title ?? this.title,
       description: description ?? this.description,
+      status: status ?? this.status,
+      failureReason: failureReason ?? this.failureReason,
+      finishedAt: finishedAt ?? this.finishedAt,
       completedAt: completedAt ?? this.completedAt,
       recordedAt: recordedAt ?? this.recordedAt,
     );
@@ -965,6 +1104,15 @@ class StagesCompanion extends UpdateCompanion<Stage> {
     if (description.present) {
       map['description'] = Variable<String>(description.value);
     }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (failureReason.present) {
+      map['failure_reason'] = Variable<String>(failureReason.value);
+    }
+    if (finishedAt.present) {
+      map['finished_at'] = Variable<DateTime>(finishedAt.value);
+    }
     if (completedAt.present) {
       map['completed_at'] = Variable<DateTime>(completedAt.value);
     }
@@ -982,6 +1130,9 @@ class StagesCompanion extends UpdateCompanion<Stage> {
           ..write('stageType: $stageType, ')
           ..write('title: $title, ')
           ..write('description: $description, ')
+          ..write('status: $status, ')
+          ..write('failureReason: $failureReason, ')
+          ..write('finishedAt: $finishedAt, ')
           ..write('completedAt: $completedAt, ')
           ..write('recordedAt: $recordedAt')
           ..write(')'))
@@ -2060,6 +2211,9 @@ typedef $$StagesTableCreateCompanionBuilder =
       required String stageType,
       Value<String?> title,
       Value<String?> description,
+      Value<String> status,
+      Value<String?> failureReason,
+      Value<DateTime?> finishedAt,
       Value<DateTime?> completedAt,
       required DateTime recordedAt,
     });
@@ -2070,6 +2224,9 @@ typedef $$StagesTableUpdateCompanionBuilder =
       Value<String> stageType,
       Value<String?> title,
       Value<String?> description,
+      Value<String> status,
+      Value<String?> failureReason,
+      Value<DateTime?> finishedAt,
       Value<DateTime?> completedAt,
       Value<DateTime> recordedAt,
     });
@@ -2142,6 +2299,21 @@ class $$StagesTableFilterComposer
 
   ColumnFilters<String> get description => $composableBuilder(
     column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get failureReason => $composableBuilder(
+    column: $table.failureReason,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get finishedAt => $composableBuilder(
+    column: $table.finishedAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2233,6 +2405,21 @@ class $$StagesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get failureReason => $composableBuilder(
+    column: $table.failureReason,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get finishedAt => $composableBuilder(
+    column: $table.finishedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get completedAt => $composableBuilder(
     column: $table.completedAt,
     builder: (column) => ColumnOrderings(column),
@@ -2287,6 +2474,19 @@ class $$StagesTableAnnotationComposer
 
   GeneratedColumn<String> get description => $composableBuilder(
     column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get failureReason => $composableBuilder(
+    column: $table.failureReason,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get finishedAt => $composableBuilder(
+    column: $table.finishedAt,
     builder: (column) => column,
   );
 
@@ -2382,6 +2582,9 @@ class $$StagesTableTableManager
                 Value<String> stageType = const Value.absent(),
                 Value<String?> title = const Value.absent(),
                 Value<String?> description = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String?> failureReason = const Value.absent(),
+                Value<DateTime?> finishedAt = const Value.absent(),
                 Value<DateTime?> completedAt = const Value.absent(),
                 Value<DateTime> recordedAt = const Value.absent(),
               }) => StagesCompanion(
@@ -2390,6 +2593,9 @@ class $$StagesTableTableManager
                 stageType: stageType,
                 title: title,
                 description: description,
+                status: status,
+                failureReason: failureReason,
+                finishedAt: finishedAt,
                 completedAt: completedAt,
                 recordedAt: recordedAt,
               ),
@@ -2400,6 +2606,9 @@ class $$StagesTableTableManager
                 required String stageType,
                 Value<String?> title = const Value.absent(),
                 Value<String?> description = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String?> failureReason = const Value.absent(),
+                Value<DateTime?> finishedAt = const Value.absent(),
                 Value<DateTime?> completedAt = const Value.absent(),
                 required DateTime recordedAt,
               }) => StagesCompanion.insert(
@@ -2408,6 +2617,9 @@ class $$StagesTableTableManager
                 stageType: stageType,
                 title: title,
                 description: description,
+                status: status,
+                failureReason: failureReason,
+                finishedAt: finishedAt,
                 completedAt: completedAt,
                 recordedAt: recordedAt,
               ),

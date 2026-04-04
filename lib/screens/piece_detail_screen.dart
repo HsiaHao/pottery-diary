@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pottery_diary/database/app_database.dart';
+import 'package:pottery_diary/models/stage_status.dart';
 import 'package:pottery_diary/models/stage_type.dart';
 import 'package:pottery_diary/providers/providers.dart';
 import 'package:pottery_diary/screens/stage_entry_screen.dart';
@@ -177,7 +178,7 @@ class _HeroAppBar extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _StatusBadge(piece: piece),
+                  _HeroStatusBadge(piece: piece),
                   const SizedBox(height: 6),
                   Text(
                     piece.title,
@@ -207,8 +208,8 @@ class _HeroAppBar extends StatelessWidget {
   }
 }
 
-class _StatusBadge extends ConsumerWidget {
-  const _StatusBadge({required this.piece});
+class _HeroStatusBadge extends ConsumerWidget {
+  const _HeroStatusBadge({required this.piece});
 
   final Piece piece;
 
@@ -218,11 +219,16 @@ class _StatusBadge extends ConsumerWidget {
     final latestComplete = StageType.values.lastWhere(
       (t) =>
           stages
-              .where((s) => s.stageType == t.name && s.completedAt != null)
+              .where((s) =>
+                  s.stageType == t.name &&
+                  StageStatus.fromString(s.status) == StageStatus.complete)
               .isNotEmpty,
       orElse: () => StageType.trimmed,
     );
-    final allComplete = stages.where((s) => s.completedAt != null).length == 3;
+    final allComplete = stages
+            .where((s) => StageStatus.fromString(s.status) == StageStatus.complete)
+            .length ==
+        3;
     final label = allComplete
         ? 'GLAZE FIRED'
         : 'CURRENT STATUS: ${latestComplete.shortLabel}';
@@ -267,7 +273,8 @@ class _StageCard extends ConsumerWidget {
         ? (ref.watch(photosForStageProvider(stage!.id)).valueOrNull ?? [])
         : <Photo>[];
 
-    final isComplete = stage?.completedAt != null;
+    final status =
+        StageStatus.fromString(stage?.status);
     final isStarted = stage != null;
 
     return Container(
@@ -292,45 +299,7 @@ class _StageCard extends ConsumerWidget {
               children: [
                 _StageBadge(stageType: stageType),
                 const Spacer(),
-                if (isComplete)
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: Colors.green.shade50,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.check_circle,
-                            size: 12, color: Colors.green.shade600),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Complete',
-                          style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.green.shade600,
-                              fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                  )
-                else if (isStarted)
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.shade50,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      'In Progress',
-                      style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.orange.shade700,
-                          fontWeight: FontWeight.w600),
-                    ),
-                  ),
+                if (isStarted) _StatusBadge(status: status),
               ],
             ),
           ),
@@ -355,6 +324,56 @@ class _StageCard extends ConsumerWidget {
                     ?.copyWith(color: Colors.grey.shade600, height: 1.5),
               ),
             ),
+          // Failure reason
+          if (status == StageStatus.failed &&
+              stage?.failureReason != null &&
+              stage!.failureReason!.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.shade100),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.info_outline,
+                        size: 14, color: Colors.red.shade400),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        stage!.failureReason!,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.red.shade700,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          // Finish time
+          if (stage?.finishedAt != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+              child: Row(
+                children: [
+                  Icon(Icons.schedule, size: 13, color: Colors.grey.shade400),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Finished ${_fmtDate(stage!.finishedAt!)}',
+                    style: TextStyle(
+                        fontSize: 11, color: Colors.grey.shade500),
+                  ),
+                ],
+              ),
+            ),
+          // Photos with long-press to set cover
           if (photos.isNotEmpty) ...[
             const SizedBox(height: 10),
             SizedBox(
@@ -363,16 +382,29 @@ class _StageCard extends ConsumerWidget {
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 itemCount: photos.length,
-                separatorBuilder: (context, index) => const SizedBox(width: 8),
-                itemBuilder: (context, i) => ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: Image.file(
-                    File(photos[i].localPath),
-                    width: 100,
-                    height: 100,
-                    fit: BoxFit.cover,
+                separatorBuilder: (context, index) =>
+                    const SizedBox(width: 8),
+                itemBuilder: (context, i) => GestureDetector(
+                  onLongPress: () =>
+                      _setCover(context, ref, photos[i].localPath),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.file(
+                      File(photos[i].localPath),
+                      width: 100,
+                      height: 100,
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+              child: Text(
+                'Hold a photo to set as cover',
+                style: TextStyle(
+                    fontSize: 10, color: Colors.grey.shade400),
               ),
             ),
           ],
@@ -400,6 +432,69 @@ class _StageCard extends ConsumerWidget {
                 ),
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _setCover(
+      BuildContext context, WidgetRef ref, String localPath) async {
+    await ref.read(pieceRepositoryProvider).setPieceCoverPhoto(pieceId, localPath);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cover photo updated'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  static String _fmtDate(DateTime dt) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    return '${months[dt.month - 1]} ${dt.day}, ${dt.year}';
+  }
+}
+
+class _StatusBadge extends StatelessWidget {
+  const _StatusBadge({required this.status});
+
+  final StageStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = status == StageStatus.complete
+        ? Colors.green
+        : status == StageStatus.failed
+            ? Colors.red
+            : Colors.orange;
+    final icon = status == StageStatus.complete
+        ? Icons.check_circle
+        : status == StageStatus.failed
+            ? Icons.cancel
+            : Icons.radio_button_checked;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.shade50,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color.shade600),
+          const SizedBox(width: 4),
+          Text(
+            status.label,
+            style: TextStyle(
+                fontSize: 11,
+                color: color.shade700,
+                fontWeight: FontWeight.w600),
           ),
         ],
       ),
