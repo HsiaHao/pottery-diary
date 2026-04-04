@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pottery_diary/models/stage_type.dart';
 import 'package:pottery_diary/providers/providers.dart';
 import 'package:pottery_diary/widgets/edit_piece_sheet.dart';
+import 'package:pottery_diary/widgets/stage_entry_sheet.dart';
 import 'package:pottery_diary/widgets/stage_tile.dart';
 
 class PieceDetailScreen extends ConsumerWidget {
@@ -65,7 +66,19 @@ class PieceDetailScreen extends ConsumerWidget {
                     final stage = stages
                         .where((s) => s.stageType == type.name)
                         .firstOrNull;
-                    return StageTile(stageType: type, stage: stage);
+                    return StageTile(
+                      stageType: type,
+                      stage: stage,
+                      onTap: () => showModalBottomSheet<void>(
+                        context: context,
+                        isScrollControlled: true,
+                        builder: (_) => StageEntrySheet(
+                          pieceId: pieceId,
+                          stageType: type,
+                          existingStage: stage,
+                        ),
+                      ),
+                    );
                   }).toList(),
                 ),
                 loading: () => const Center(

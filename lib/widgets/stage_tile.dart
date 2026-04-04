@@ -7,10 +7,12 @@ class StageTile extends StatelessWidget {
     super.key,
     required this.stageType,
     this.stage,
+    this.onTap,
   });
 
   final StageType stageType;
   final Stage? stage;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -21,6 +23,7 @@ class StageTile extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4),
       child: ListTile(
+        onTap: onTap,
         leading: Icon(
           isComplete
               ? Icons.check_circle
@@ -40,7 +43,7 @@ class StageTile extends StatelessWidget {
                 _formatDate(stage!.completedAt!),
                 style: Theme.of(context).textTheme.bodySmall,
               )
-            : null,
+            : const Icon(Icons.chevron_right, color: Colors.grey),
       ),
     );
   }
