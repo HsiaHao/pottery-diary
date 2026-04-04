@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pottery_diary/screens/pieces_list_screen.dart';
 
 class PotteryDiaryApp extends StatelessWidget {
   const PotteryDiaryApp({super.key});
@@ -13,9 +14,7 @@ class PotteryDiaryApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const Scaffold(
-        body: Center(child: Text('Pottery Diary')),
-      ),
+      home: const PiecesListScreen(),
     );
   }
 }

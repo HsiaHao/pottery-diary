@@ -15,3 +15,13 @@ final pieceRepositoryProvider = Provider<PieceRepository>((ref) {
 final piecesProvider = StreamProvider<List<Piece>>((ref) {
   return ref.watch(pieceRepositoryProvider).watchAllPieces();
 });
+
+final pieceProvider =
+    StreamProvider.family<Piece?, int>((ref, pieceId) {
+  return ref.watch(pieceRepositoryProvider).watchPieceById(pieceId);
+});
+
+final stagesForPieceProvider =
+    StreamProvider.family<List<Stage>, int>((ref, pieceId) {
+  return ref.watch(pieceRepositoryProvider).watchStagesForPiece(pieceId);
+});

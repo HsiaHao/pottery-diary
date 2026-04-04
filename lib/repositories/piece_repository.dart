@@ -22,6 +22,10 @@ class PieceRepository {
   Future<Piece?> getPieceById(int id) =>
       (_db.select(_db.pieces)..where((t) => t.id.equals(id))).getSingleOrNull();
 
+  Stream<Piece?> watchPieceById(int id) =>
+      (_db.select(_db.pieces)..where((t) => t.id.equals(id)))
+          .watchSingleOrNull();
+
   Future<int> createPiece({required String title, String? description}) {
     final now = DateTime.now();
     return _db.into(_db.pieces).insert(
@@ -57,6 +61,10 @@ class PieceRepository {
 
   Future<List<Stage>> getStagesForPiece(int pieceId) =>
       (_db.select(_db.stages)..where((t) => t.pieceId.equals(pieceId))).get();
+
+  Stream<List<Stage>> watchStagesForPiece(int pieceId) =>
+      (_db.select(_db.stages)..where((t) => t.pieceId.equals(pieceId)))
+          .watch();
 
   Future<int> createStage({
     required int pieceId,
