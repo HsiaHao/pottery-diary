@@ -15,6 +15,9 @@ class Pieces extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get title => text()();
   TextColumn get description => text().nullable()();
+  TextColumn get coverPhotoPath => text().nullable()();
+  TextColumn get clayBody => text().nullable()();
+  TextColumn get firingTemp => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
 }
@@ -25,6 +28,7 @@ class Stages extends Table {
       integer().references(Pieces, #id, onDelete: KeyAction.cascade)();
   // Stored as StageType.name string: 'trimmed' | 'bisque' | 'glazeFired'
   TextColumn get stageType => text()();
+  TextColumn get title => text().nullable()();
   TextColumn get description => text().nullable()();
   DateTimeColumn get completedAt => dateTime().nullable()();
   DateTimeColumn get recordedAt => dateTime()();
@@ -58,12 +62,19 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await m.addColumn(pieces, pieces.coverPhotoPath);
+            await m.addColumn(pieces, pieces.clayBody);
+            await m.addColumn(pieces, pieces.firingTemp);
+            await m.addColumn(stages, stages.title);
+          }
+        },
         beforeOpen: (details) async {
-          // Enable foreign key cascade support in SQLite.
           await customStatement('PRAGMA foreign_keys = ON');
         },
       );

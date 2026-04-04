@@ -41,6 +41,39 @@ class $PiecesTable extends Pieces with TableInfo<$PiecesTable, Piece> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _coverPhotoPathMeta = const VerificationMeta(
+    'coverPhotoPath',
+  );
+  @override
+  late final GeneratedColumn<String> coverPhotoPath = GeneratedColumn<String>(
+    'cover_photo_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _clayBodyMeta = const VerificationMeta(
+    'clayBody',
+  );
+  @override
+  late final GeneratedColumn<String> clayBody = GeneratedColumn<String>(
+    'clay_body',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _firingTempMeta = const VerificationMeta(
+    'firingTemp',
+  );
+  @override
+  late final GeneratedColumn<String> firingTemp = GeneratedColumn<String>(
+    'firing_temp',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -68,6 +101,9 @@ class $PiecesTable extends Pieces with TableInfo<$PiecesTable, Piece> {
     id,
     title,
     description,
+    coverPhotoPath,
+    clayBody,
+    firingTemp,
     createdAt,
     updatedAt,
   ];
@@ -101,6 +137,27 @@ class $PiecesTable extends Pieces with TableInfo<$PiecesTable, Piece> {
           data['description']!,
           _descriptionMeta,
         ),
+      );
+    }
+    if (data.containsKey('cover_photo_path')) {
+      context.handle(
+        _coverPhotoPathMeta,
+        coverPhotoPath.isAcceptableOrUnknown(
+          data['cover_photo_path']!,
+          _coverPhotoPathMeta,
+        ),
+      );
+    }
+    if (data.containsKey('clay_body')) {
+      context.handle(
+        _clayBodyMeta,
+        clayBody.isAcceptableOrUnknown(data['clay_body']!, _clayBodyMeta),
+      );
+    }
+    if (data.containsKey('firing_temp')) {
+      context.handle(
+        _firingTempMeta,
+        firingTemp.isAcceptableOrUnknown(data['firing_temp']!, _firingTempMeta),
       );
     }
     if (data.containsKey('created_at')) {
@@ -140,6 +197,18 @@ class $PiecesTable extends Pieces with TableInfo<$PiecesTable, Piece> {
         DriftSqlType.string,
         data['${effectivePrefix}description'],
       ),
+      coverPhotoPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cover_photo_path'],
+      ),
+      clayBody: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}clay_body'],
+      ),
+      firingTemp: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}firing_temp'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -161,12 +230,18 @@ class Piece extends DataClass implements Insertable<Piece> {
   final int id;
   final String title;
   final String? description;
+  final String? coverPhotoPath;
+  final String? clayBody;
+  final String? firingTemp;
   final DateTime createdAt;
   final DateTime updatedAt;
   const Piece({
     required this.id,
     required this.title,
     this.description,
+    this.coverPhotoPath,
+    this.clayBody,
+    this.firingTemp,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -177,6 +252,15 @@ class Piece extends DataClass implements Insertable<Piece> {
     map['title'] = Variable<String>(title);
     if (!nullToAbsent || description != null) {
       map['description'] = Variable<String>(description);
+    }
+    if (!nullToAbsent || coverPhotoPath != null) {
+      map['cover_photo_path'] = Variable<String>(coverPhotoPath);
+    }
+    if (!nullToAbsent || clayBody != null) {
+      map['clay_body'] = Variable<String>(clayBody);
+    }
+    if (!nullToAbsent || firingTemp != null) {
+      map['firing_temp'] = Variable<String>(firingTemp);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -190,6 +274,15 @@ class Piece extends DataClass implements Insertable<Piece> {
       description: description == null && nullToAbsent
           ? const Value.absent()
           : Value(description),
+      coverPhotoPath: coverPhotoPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(coverPhotoPath),
+      clayBody: clayBody == null && nullToAbsent
+          ? const Value.absent()
+          : Value(clayBody),
+      firingTemp: firingTemp == null && nullToAbsent
+          ? const Value.absent()
+          : Value(firingTemp),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -204,6 +297,9 @@ class Piece extends DataClass implements Insertable<Piece> {
       id: serializer.fromJson<int>(json['id']),
       title: serializer.fromJson<String>(json['title']),
       description: serializer.fromJson<String?>(json['description']),
+      coverPhotoPath: serializer.fromJson<String?>(json['coverPhotoPath']),
+      clayBody: serializer.fromJson<String?>(json['clayBody']),
+      firingTemp: serializer.fromJson<String?>(json['firingTemp']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -215,6 +311,9 @@ class Piece extends DataClass implements Insertable<Piece> {
       'id': serializer.toJson<int>(id),
       'title': serializer.toJson<String>(title),
       'description': serializer.toJson<String?>(description),
+      'coverPhotoPath': serializer.toJson<String?>(coverPhotoPath),
+      'clayBody': serializer.toJson<String?>(clayBody),
+      'firingTemp': serializer.toJson<String?>(firingTemp),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -224,12 +323,20 @@ class Piece extends DataClass implements Insertable<Piece> {
     int? id,
     String? title,
     Value<String?> description = const Value.absent(),
+    Value<String?> coverPhotoPath = const Value.absent(),
+    Value<String?> clayBody = const Value.absent(),
+    Value<String?> firingTemp = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => Piece(
     id: id ?? this.id,
     title: title ?? this.title,
     description: description.present ? description.value : this.description,
+    coverPhotoPath: coverPhotoPath.present
+        ? coverPhotoPath.value
+        : this.coverPhotoPath,
+    clayBody: clayBody.present ? clayBody.value : this.clayBody,
+    firingTemp: firingTemp.present ? firingTemp.value : this.firingTemp,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -240,6 +347,13 @@ class Piece extends DataClass implements Insertable<Piece> {
       description: data.description.present
           ? data.description.value
           : this.description,
+      coverPhotoPath: data.coverPhotoPath.present
+          ? data.coverPhotoPath.value
+          : this.coverPhotoPath,
+      clayBody: data.clayBody.present ? data.clayBody.value : this.clayBody,
+      firingTemp: data.firingTemp.present
+          ? data.firingTemp.value
+          : this.firingTemp,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -251,6 +365,9 @@ class Piece extends DataClass implements Insertable<Piece> {
           ..write('id: $id, ')
           ..write('title: $title, ')
           ..write('description: $description, ')
+          ..write('coverPhotoPath: $coverPhotoPath, ')
+          ..write('clayBody: $clayBody, ')
+          ..write('firingTemp: $firingTemp, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -258,7 +375,16 @@ class Piece extends DataClass implements Insertable<Piece> {
   }
 
   @override
-  int get hashCode => Object.hash(id, title, description, createdAt, updatedAt);
+  int get hashCode => Object.hash(
+    id,
+    title,
+    description,
+    coverPhotoPath,
+    clayBody,
+    firingTemp,
+    createdAt,
+    updatedAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -266,6 +392,9 @@ class Piece extends DataClass implements Insertable<Piece> {
           other.id == this.id &&
           other.title == this.title &&
           other.description == this.description &&
+          other.coverPhotoPath == this.coverPhotoPath &&
+          other.clayBody == this.clayBody &&
+          other.firingTemp == this.firingTemp &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -274,12 +403,18 @@ class PiecesCompanion extends UpdateCompanion<Piece> {
   final Value<int> id;
   final Value<String> title;
   final Value<String?> description;
+  final Value<String?> coverPhotoPath;
+  final Value<String?> clayBody;
+  final Value<String?> firingTemp;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   const PiecesCompanion({
     this.id = const Value.absent(),
     this.title = const Value.absent(),
     this.description = const Value.absent(),
+    this.coverPhotoPath = const Value.absent(),
+    this.clayBody = const Value.absent(),
+    this.firingTemp = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -287,6 +422,9 @@ class PiecesCompanion extends UpdateCompanion<Piece> {
     this.id = const Value.absent(),
     required String title,
     this.description = const Value.absent(),
+    this.coverPhotoPath = const Value.absent(),
+    this.clayBody = const Value.absent(),
+    this.firingTemp = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
   }) : title = Value(title),
@@ -296,6 +434,9 @@ class PiecesCompanion extends UpdateCompanion<Piece> {
     Expression<int>? id,
     Expression<String>? title,
     Expression<String>? description,
+    Expression<String>? coverPhotoPath,
+    Expression<String>? clayBody,
+    Expression<String>? firingTemp,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
@@ -303,6 +444,9 @@ class PiecesCompanion extends UpdateCompanion<Piece> {
       if (id != null) 'id': id,
       if (title != null) 'title': title,
       if (description != null) 'description': description,
+      if (coverPhotoPath != null) 'cover_photo_path': coverPhotoPath,
+      if (clayBody != null) 'clay_body': clayBody,
+      if (firingTemp != null) 'firing_temp': firingTemp,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -312,6 +456,9 @@ class PiecesCompanion extends UpdateCompanion<Piece> {
     Value<int>? id,
     Value<String>? title,
     Value<String?>? description,
+    Value<String?>? coverPhotoPath,
+    Value<String?>? clayBody,
+    Value<String?>? firingTemp,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
   }) {
@@ -319,6 +466,9 @@ class PiecesCompanion extends UpdateCompanion<Piece> {
       id: id ?? this.id,
       title: title ?? this.title,
       description: description ?? this.description,
+      coverPhotoPath: coverPhotoPath ?? this.coverPhotoPath,
+      clayBody: clayBody ?? this.clayBody,
+      firingTemp: firingTemp ?? this.firingTemp,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -336,6 +486,15 @@ class PiecesCompanion extends UpdateCompanion<Piece> {
     if (description.present) {
       map['description'] = Variable<String>(description.value);
     }
+    if (coverPhotoPath.present) {
+      map['cover_photo_path'] = Variable<String>(coverPhotoPath.value);
+    }
+    if (clayBody.present) {
+      map['clay_body'] = Variable<String>(clayBody.value);
+    }
+    if (firingTemp.present) {
+      map['firing_temp'] = Variable<String>(firingTemp.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -351,6 +510,9 @@ class PiecesCompanion extends UpdateCompanion<Piece> {
           ..write('id: $id, ')
           ..write('title: $title, ')
           ..write('description: $description, ')
+          ..write('coverPhotoPath: $coverPhotoPath, ')
+          ..write('clayBody: $clayBody, ')
+          ..write('firingTemp: $firingTemp, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -401,6 +563,15 @@ class $StagesTable extends Stages with TableInfo<$StagesTable, Stage> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _descriptionMeta = const VerificationMeta(
     'description',
   );
@@ -439,6 +610,7 @@ class $StagesTable extends Stages with TableInfo<$StagesTable, Stage> {
     id,
     pieceId,
     stageType,
+    title,
     description,
     completedAt,
     recordedAt,
@@ -473,6 +645,12 @@ class $StagesTable extends Stages with TableInfo<$StagesTable, Stage> {
       );
     } else if (isInserting) {
       context.missing(_stageTypeMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
     }
     if (data.containsKey('description')) {
       context.handle(
@@ -521,6 +699,10 @@ class $StagesTable extends Stages with TableInfo<$StagesTable, Stage> {
         DriftSqlType.string,
         data['${effectivePrefix}stage_type'],
       )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      ),
       description: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}description'],
@@ -546,6 +728,7 @@ class Stage extends DataClass implements Insertable<Stage> {
   final int id;
   final int pieceId;
   final String stageType;
+  final String? title;
   final String? description;
   final DateTime? completedAt;
   final DateTime recordedAt;
@@ -553,6 +736,7 @@ class Stage extends DataClass implements Insertable<Stage> {
     required this.id,
     required this.pieceId,
     required this.stageType,
+    this.title,
     this.description,
     this.completedAt,
     required this.recordedAt,
@@ -563,6 +747,9 @@ class Stage extends DataClass implements Insertable<Stage> {
     map['id'] = Variable<int>(id);
     map['piece_id'] = Variable<int>(pieceId);
     map['stage_type'] = Variable<String>(stageType);
+    if (!nullToAbsent || title != null) {
+      map['title'] = Variable<String>(title);
+    }
     if (!nullToAbsent || description != null) {
       map['description'] = Variable<String>(description);
     }
@@ -578,6 +765,9 @@ class Stage extends DataClass implements Insertable<Stage> {
       id: Value(id),
       pieceId: Value(pieceId),
       stageType: Value(stageType),
+      title: title == null && nullToAbsent
+          ? const Value.absent()
+          : Value(title),
       description: description == null && nullToAbsent
           ? const Value.absent()
           : Value(description),
@@ -597,6 +787,7 @@ class Stage extends DataClass implements Insertable<Stage> {
       id: serializer.fromJson<int>(json['id']),
       pieceId: serializer.fromJson<int>(json['pieceId']),
       stageType: serializer.fromJson<String>(json['stageType']),
+      title: serializer.fromJson<String?>(json['title']),
       description: serializer.fromJson<String?>(json['description']),
       completedAt: serializer.fromJson<DateTime?>(json['completedAt']),
       recordedAt: serializer.fromJson<DateTime>(json['recordedAt']),
@@ -609,6 +800,7 @@ class Stage extends DataClass implements Insertable<Stage> {
       'id': serializer.toJson<int>(id),
       'pieceId': serializer.toJson<int>(pieceId),
       'stageType': serializer.toJson<String>(stageType),
+      'title': serializer.toJson<String?>(title),
       'description': serializer.toJson<String?>(description),
       'completedAt': serializer.toJson<DateTime?>(completedAt),
       'recordedAt': serializer.toJson<DateTime>(recordedAt),
@@ -619,6 +811,7 @@ class Stage extends DataClass implements Insertable<Stage> {
     int? id,
     int? pieceId,
     String? stageType,
+    Value<String?> title = const Value.absent(),
     Value<String?> description = const Value.absent(),
     Value<DateTime?> completedAt = const Value.absent(),
     DateTime? recordedAt,
@@ -626,6 +819,7 @@ class Stage extends DataClass implements Insertable<Stage> {
     id: id ?? this.id,
     pieceId: pieceId ?? this.pieceId,
     stageType: stageType ?? this.stageType,
+    title: title.present ? title.value : this.title,
     description: description.present ? description.value : this.description,
     completedAt: completedAt.present ? completedAt.value : this.completedAt,
     recordedAt: recordedAt ?? this.recordedAt,
@@ -635,6 +829,7 @@ class Stage extends DataClass implements Insertable<Stage> {
       id: data.id.present ? data.id.value : this.id,
       pieceId: data.pieceId.present ? data.pieceId.value : this.pieceId,
       stageType: data.stageType.present ? data.stageType.value : this.stageType,
+      title: data.title.present ? data.title.value : this.title,
       description: data.description.present
           ? data.description.value
           : this.description,
@@ -653,6 +848,7 @@ class Stage extends DataClass implements Insertable<Stage> {
           ..write('id: $id, ')
           ..write('pieceId: $pieceId, ')
           ..write('stageType: $stageType, ')
+          ..write('title: $title, ')
           ..write('description: $description, ')
           ..write('completedAt: $completedAt, ')
           ..write('recordedAt: $recordedAt')
@@ -661,8 +857,15 @@ class Stage extends DataClass implements Insertable<Stage> {
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, pieceId, stageType, description, completedAt, recordedAt);
+  int get hashCode => Object.hash(
+    id,
+    pieceId,
+    stageType,
+    title,
+    description,
+    completedAt,
+    recordedAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -670,6 +873,7 @@ class Stage extends DataClass implements Insertable<Stage> {
           other.id == this.id &&
           other.pieceId == this.pieceId &&
           other.stageType == this.stageType &&
+          other.title == this.title &&
           other.description == this.description &&
           other.completedAt == this.completedAt &&
           other.recordedAt == this.recordedAt);
@@ -679,6 +883,7 @@ class StagesCompanion extends UpdateCompanion<Stage> {
   final Value<int> id;
   final Value<int> pieceId;
   final Value<String> stageType;
+  final Value<String?> title;
   final Value<String?> description;
   final Value<DateTime?> completedAt;
   final Value<DateTime> recordedAt;
@@ -686,6 +891,7 @@ class StagesCompanion extends UpdateCompanion<Stage> {
     this.id = const Value.absent(),
     this.pieceId = const Value.absent(),
     this.stageType = const Value.absent(),
+    this.title = const Value.absent(),
     this.description = const Value.absent(),
     this.completedAt = const Value.absent(),
     this.recordedAt = const Value.absent(),
@@ -694,6 +900,7 @@ class StagesCompanion extends UpdateCompanion<Stage> {
     this.id = const Value.absent(),
     required int pieceId,
     required String stageType,
+    this.title = const Value.absent(),
     this.description = const Value.absent(),
     this.completedAt = const Value.absent(),
     required DateTime recordedAt,
@@ -704,6 +911,7 @@ class StagesCompanion extends UpdateCompanion<Stage> {
     Expression<int>? id,
     Expression<int>? pieceId,
     Expression<String>? stageType,
+    Expression<String>? title,
     Expression<String>? description,
     Expression<DateTime>? completedAt,
     Expression<DateTime>? recordedAt,
@@ -712,6 +920,7 @@ class StagesCompanion extends UpdateCompanion<Stage> {
       if (id != null) 'id': id,
       if (pieceId != null) 'piece_id': pieceId,
       if (stageType != null) 'stage_type': stageType,
+      if (title != null) 'title': title,
       if (description != null) 'description': description,
       if (completedAt != null) 'completed_at': completedAt,
       if (recordedAt != null) 'recorded_at': recordedAt,
@@ -722,6 +931,7 @@ class StagesCompanion extends UpdateCompanion<Stage> {
     Value<int>? id,
     Value<int>? pieceId,
     Value<String>? stageType,
+    Value<String?>? title,
     Value<String?>? description,
     Value<DateTime?>? completedAt,
     Value<DateTime>? recordedAt,
@@ -730,6 +940,7 @@ class StagesCompanion extends UpdateCompanion<Stage> {
       id: id ?? this.id,
       pieceId: pieceId ?? this.pieceId,
       stageType: stageType ?? this.stageType,
+      title: title ?? this.title,
       description: description ?? this.description,
       completedAt: completedAt ?? this.completedAt,
       recordedAt: recordedAt ?? this.recordedAt,
@@ -747,6 +958,9 @@ class StagesCompanion extends UpdateCompanion<Stage> {
     }
     if (stageType.present) {
       map['stage_type'] = Variable<String>(stageType.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
     }
     if (description.present) {
       map['description'] = Variable<String>(description.value);
@@ -766,6 +980,7 @@ class StagesCompanion extends UpdateCompanion<Stage> {
           ..write('id: $id, ')
           ..write('pieceId: $pieceId, ')
           ..write('stageType: $stageType, ')
+          ..write('title: $title, ')
           ..write('description: $description, ')
           ..write('completedAt: $completedAt, ')
           ..write('recordedAt: $recordedAt')
@@ -1399,6 +1614,9 @@ typedef $$PiecesTableCreateCompanionBuilder =
       Value<int> id,
       required String title,
       Value<String?> description,
+      Value<String?> coverPhotoPath,
+      Value<String?> clayBody,
+      Value<String?> firingTemp,
       required DateTime createdAt,
       required DateTime updatedAt,
     });
@@ -1407,6 +1625,9 @@ typedef $$PiecesTableUpdateCompanionBuilder =
       Value<int> id,
       Value<String> title,
       Value<String?> description,
+      Value<String?> coverPhotoPath,
+      Value<String?> clayBody,
+      Value<String?> firingTemp,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -1474,6 +1695,21 @@ class $$PiecesTableFilterComposer
 
   ColumnFilters<String> get description => $composableBuilder(
     column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get coverPhotoPath => $composableBuilder(
+    column: $table.coverPhotoPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get clayBody => $composableBuilder(
+    column: $table.clayBody,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get firingTemp => $composableBuilder(
+    column: $table.firingTemp,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1562,6 +1798,21 @@ class $$PiecesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get coverPhotoPath => $composableBuilder(
+    column: $table.coverPhotoPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get clayBody => $composableBuilder(
+    column: $table.clayBody,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get firingTemp => $composableBuilder(
+    column: $table.firingTemp,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -1590,6 +1841,19 @@ class $$PiecesTableAnnotationComposer
 
   GeneratedColumn<String> get description => $composableBuilder(
     column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get coverPhotoPath => $composableBuilder(
+    column: $table.coverPhotoPath,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get clayBody =>
+      $composableBuilder(column: $table.clayBody, builder: (column) => column);
+
+  GeneratedColumn<String> get firingTemp => $composableBuilder(
+    column: $table.firingTemp,
     builder: (column) => column,
   );
 
@@ -1681,12 +1945,18 @@ class $$PiecesTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<String> title = const Value.absent(),
                 Value<String?> description = const Value.absent(),
+                Value<String?> coverPhotoPath = const Value.absent(),
+                Value<String?> clayBody = const Value.absent(),
+                Value<String?> firingTemp = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => PiecesCompanion(
                 id: id,
                 title: title,
                 description: description,
+                coverPhotoPath: coverPhotoPath,
+                clayBody: clayBody,
+                firingTemp: firingTemp,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -1695,12 +1965,18 @@ class $$PiecesTableTableManager
                 Value<int> id = const Value.absent(),
                 required String title,
                 Value<String?> description = const Value.absent(),
+                Value<String?> coverPhotoPath = const Value.absent(),
+                Value<String?> clayBody = const Value.absent(),
+                Value<String?> firingTemp = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
               }) => PiecesCompanion.insert(
                 id: id,
                 title: title,
                 description: description,
+                coverPhotoPath: coverPhotoPath,
+                clayBody: clayBody,
+                firingTemp: firingTemp,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -1782,6 +2058,7 @@ typedef $$StagesTableCreateCompanionBuilder =
       Value<int> id,
       required int pieceId,
       required String stageType,
+      Value<String?> title,
       Value<String?> description,
       Value<DateTime?> completedAt,
       required DateTime recordedAt,
@@ -1791,6 +2068,7 @@ typedef $$StagesTableUpdateCompanionBuilder =
       Value<int> id,
       Value<int> pieceId,
       Value<String> stageType,
+      Value<String?> title,
       Value<String?> description,
       Value<DateTime?> completedAt,
       Value<DateTime> recordedAt,
@@ -1854,6 +2132,11 @@ class $$StagesTableFilterComposer
 
   ColumnFilters<String> get stageType => $composableBuilder(
     column: $table.stageType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1940,6 +2223,11 @@ class $$StagesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get description => $composableBuilder(
     column: $table.description,
     builder: (column) => ColumnOrderings(column),
@@ -1993,6 +2281,9 @@ class $$StagesTableAnnotationComposer
 
   GeneratedColumn<String> get stageType =>
       $composableBuilder(column: $table.stageType, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
 
   GeneratedColumn<String> get description => $composableBuilder(
     column: $table.description,
@@ -2089,6 +2380,7 @@ class $$StagesTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<int> pieceId = const Value.absent(),
                 Value<String> stageType = const Value.absent(),
+                Value<String?> title = const Value.absent(),
                 Value<String?> description = const Value.absent(),
                 Value<DateTime?> completedAt = const Value.absent(),
                 Value<DateTime> recordedAt = const Value.absent(),
@@ -2096,6 +2388,7 @@ class $$StagesTableTableManager
                 id: id,
                 pieceId: pieceId,
                 stageType: stageType,
+                title: title,
                 description: description,
                 completedAt: completedAt,
                 recordedAt: recordedAt,
@@ -2105,6 +2398,7 @@ class $$StagesTableTableManager
                 Value<int> id = const Value.absent(),
                 required int pieceId,
                 required String stageType,
+                Value<String?> title = const Value.absent(),
                 Value<String?> description = const Value.absent(),
                 Value<DateTime?> completedAt = const Value.absent(),
                 required DateTime recordedAt,
@@ -2112,6 +2406,7 @@ class $$StagesTableTableManager
                 id: id,
                 pieceId: pieceId,
                 stageType: stageType,
+                title: title,
                 description: description,
                 completedAt: completedAt,
                 recordedAt: recordedAt,

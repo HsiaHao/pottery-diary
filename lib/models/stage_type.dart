@@ -17,4 +17,15 @@ enum StageType {
         return 'Glaze Fired';
     }
   }
+
+  String get shortLabel {
+    switch (this) {
+      case StageType.trimmed:
+        return 'TRIMMED';
+      case StageType.bisque:
+        return 'BISQUE';
+      case StageType.glazeFired:
+        return 'GLAZE FIRED';
+    }
+  }
 }

@@ -26,12 +26,21 @@ class PieceRepository {
       (_db.select(_db.pieces)..where((t) => t.id.equals(id)))
           .watchSingleOrNull();
 
-  Future<int> createPiece({required String title, String? description}) {
+  Future<int> createPiece({
+    required String title,
+    String? description,
+    String? coverPhotoPath,
+    String? clayBody,
+    String? firingTemp,
+  }) {
     final now = DateTime.now();
     return _db.into(_db.pieces).insert(
           PiecesCompanion.insert(
             title: title,
             description: Value(description),
+            coverPhotoPath: Value(coverPhotoPath),
+            clayBody: Value(clayBody),
+            firingTemp: Value(firingTemp),
             createdAt: now,
             updatedAt: now,
           ),
@@ -42,12 +51,22 @@ class PieceRepository {
     int id, {
     String? title,
     String? description,
+    String? coverPhotoPath,
+    String? clayBody,
+    String? firingTemp,
   }) =>
       (_db.update(_db.pieces)..where((t) => t.id.equals(id))).write(
         PiecesCompanion(
           title: title != null ? Value(title) : const Value.absent(),
           description:
               description != null ? Value(description) : const Value.absent(),
+          coverPhotoPath: coverPhotoPath != null
+              ? Value(coverPhotoPath)
+              : const Value.absent(),
+          clayBody:
+              clayBody != null ? Value(clayBody) : const Value.absent(),
+          firingTemp:
+              firingTemp != null ? Value(firingTemp) : const Value.absent(),
           updatedAt: Value(DateTime.now()),
         ),
       );
@@ -69,20 +88,30 @@ class PieceRepository {
   Future<int> createStage({
     required int pieceId,
     required StageType stageType,
+    String? title,
     String? description,
   }) =>
       _db.into(_db.stages).insert(
             StagesCompanion.insert(
               pieceId: pieceId,
               stageType: stageType.name,
+              title: Value(title),
               description: Value(description),
               recordedAt: DateTime.now(),
             ),
           );
 
-  Future<void> updateStageDescription(int stageId, String description) =>
+  Future<void> updateStage(
+    int stageId, {
+    String? title,
+    String? description,
+  }) =>
       (_db.update(_db.stages)..where((t) => t.id.equals(stageId))).write(
-        StagesCompanion(description: Value(description)),
+        StagesCompanion(
+          title: title != null ? Value(title) : const Value.absent(),
+          description:
+              description != null ? Value(description) : const Value.absent(),
+        ),
       );
 
   Future<void> completeStage(int stageId) =>
@@ -96,6 +125,10 @@ class PieceRepository {
 
   Future<List<Photo>> getPhotosForStage(int stageId) =>
       (_db.select(_db.photos)..where((t) => t.stageId.equals(stageId))).get();
+
+  Stream<List<Photo>> watchPhotosForStage(int stageId) =>
+      (_db.select(_db.photos)..where((t) => t.stageId.equals(stageId)))
+          .watch();
 
   Future<int> addPhoto({
     required int stageId,
@@ -122,6 +155,11 @@ class PieceRepository {
       (_db.select(_db.pieceGlazes)
             ..where((t) => t.pieceId.equals(pieceId)))
           .get();
+
+  Stream<List<PieceGlaze>> watchGlazesForPiece(int pieceId) =>
+      (_db.select(_db.pieceGlazes)
+            ..where((t) => t.pieceId.equals(pieceId)))
+          .watch();
 
   Future<void> addGlazeToPiece(int pieceId, String glazeName) =>
       _db.into(_db.pieceGlazes).insert(

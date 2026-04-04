@@ -25,3 +25,13 @@ final stagesForPieceProvider =
     StreamProvider.family<List<Stage>, int>((ref, pieceId) {
   return ref.watch(pieceRepositoryProvider).watchStagesForPiece(pieceId);
 });
+
+final photosForStageProvider =
+    StreamProvider.family<List<Photo>, int>((ref, stageId) {
+  return ref.watch(pieceRepositoryProvider).watchPhotosForStage(stageId);
+});
+
+final glazesForPieceProvider =
+    StreamProvider.family<List<PieceGlaze>, int>((ref, pieceId) {
+  return ref.watch(pieceRepositoryProvider).watchGlazesForPiece(pieceId);
+});
