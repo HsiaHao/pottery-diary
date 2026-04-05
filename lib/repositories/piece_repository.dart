@@ -30,6 +30,7 @@ class PieceRepository {
   Future<int> createPiece({
     required String title,
     String? description,
+    String? progressNote,
     String? coverPhotoPath,
     String? clayBody,
     String? firingTemp,
@@ -39,6 +40,7 @@ class PieceRepository {
           PiecesCompanion.insert(
             title: title,
             description: Value(description),
+            progressNote: Value(progressNote),
             coverPhotoPath: Value(coverPhotoPath),
             clayBody: Value(clayBody),
             firingTemp: Value(firingTemp),
@@ -52,6 +54,7 @@ class PieceRepository {
     int id, {
     String? title,
     String? description,
+    String? progressNote,
     String? coverPhotoPath,
     String? clayBody,
     String? firingTemp,
@@ -61,6 +64,9 @@ class PieceRepository {
           title: title != null ? Value(title) : const Value.absent(),
           description:
               description != null ? Value(description) : const Value.absent(),
+          progressNote: progressNote != null
+              ? Value(progressNote)
+              : const Value.absent(),
           coverPhotoPath: coverPhotoPath != null
               ? Value(coverPhotoPath)
               : const Value.absent(),
@@ -68,6 +74,14 @@ class PieceRepository {
               clayBody != null ? Value(clayBody) : const Value.absent(),
           firingTemp:
               firingTemp != null ? Value(firingTemp) : const Value.absent(),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+
+  Future<void> updateProgressNote(int pieceId, String? note) =>
+      (_db.update(_db.pieces)..where((t) => t.id.equals(pieceId))).write(
+        PiecesCompanion(
+          progressNote: Value(note),
           updatedAt: Value(DateTime.now()),
         ),
       );

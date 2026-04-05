@@ -41,6 +41,17 @@ class $PiecesTable extends Pieces with TableInfo<$PiecesTable, Piece> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _progressNoteMeta = const VerificationMeta(
+    'progressNote',
+  );
+  @override
+  late final GeneratedColumn<String> progressNote = GeneratedColumn<String>(
+    'progress_note',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _coverPhotoPathMeta = const VerificationMeta(
     'coverPhotoPath',
   );
@@ -101,6 +112,7 @@ class $PiecesTable extends Pieces with TableInfo<$PiecesTable, Piece> {
     id,
     title,
     description,
+    progressNote,
     coverPhotoPath,
     clayBody,
     firingTemp,
@@ -136,6 +148,15 @@ class $PiecesTable extends Pieces with TableInfo<$PiecesTable, Piece> {
         description.isAcceptableOrUnknown(
           data['description']!,
           _descriptionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('progress_note')) {
+      context.handle(
+        _progressNoteMeta,
+        progressNote.isAcceptableOrUnknown(
+          data['progress_note']!,
+          _progressNoteMeta,
         ),
       );
     }
@@ -197,6 +218,10 @@ class $PiecesTable extends Pieces with TableInfo<$PiecesTable, Piece> {
         DriftSqlType.string,
         data['${effectivePrefix}description'],
       ),
+      progressNote: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}progress_note'],
+      ),
       coverPhotoPath: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}cover_photo_path'],
@@ -230,6 +255,7 @@ class Piece extends DataClass implements Insertable<Piece> {
   final int id;
   final String title;
   final String? description;
+  final String? progressNote;
   final String? coverPhotoPath;
   final String? clayBody;
   final String? firingTemp;
@@ -239,6 +265,7 @@ class Piece extends DataClass implements Insertable<Piece> {
     required this.id,
     required this.title,
     this.description,
+    this.progressNote,
     this.coverPhotoPath,
     this.clayBody,
     this.firingTemp,
@@ -252,6 +279,9 @@ class Piece extends DataClass implements Insertable<Piece> {
     map['title'] = Variable<String>(title);
     if (!nullToAbsent || description != null) {
       map['description'] = Variable<String>(description);
+    }
+    if (!nullToAbsent || progressNote != null) {
+      map['progress_note'] = Variable<String>(progressNote);
     }
     if (!nullToAbsent || coverPhotoPath != null) {
       map['cover_photo_path'] = Variable<String>(coverPhotoPath);
@@ -274,6 +304,9 @@ class Piece extends DataClass implements Insertable<Piece> {
       description: description == null && nullToAbsent
           ? const Value.absent()
           : Value(description),
+      progressNote: progressNote == null && nullToAbsent
+          ? const Value.absent()
+          : Value(progressNote),
       coverPhotoPath: coverPhotoPath == null && nullToAbsent
           ? const Value.absent()
           : Value(coverPhotoPath),
@@ -297,6 +330,7 @@ class Piece extends DataClass implements Insertable<Piece> {
       id: serializer.fromJson<int>(json['id']),
       title: serializer.fromJson<String>(json['title']),
       description: serializer.fromJson<String?>(json['description']),
+      progressNote: serializer.fromJson<String?>(json['progressNote']),
       coverPhotoPath: serializer.fromJson<String?>(json['coverPhotoPath']),
       clayBody: serializer.fromJson<String?>(json['clayBody']),
       firingTemp: serializer.fromJson<String?>(json['firingTemp']),
@@ -311,6 +345,7 @@ class Piece extends DataClass implements Insertable<Piece> {
       'id': serializer.toJson<int>(id),
       'title': serializer.toJson<String>(title),
       'description': serializer.toJson<String?>(description),
+      'progressNote': serializer.toJson<String?>(progressNote),
       'coverPhotoPath': serializer.toJson<String?>(coverPhotoPath),
       'clayBody': serializer.toJson<String?>(clayBody),
       'firingTemp': serializer.toJson<String?>(firingTemp),
@@ -323,6 +358,7 @@ class Piece extends DataClass implements Insertable<Piece> {
     int? id,
     String? title,
     Value<String?> description = const Value.absent(),
+    Value<String?> progressNote = const Value.absent(),
     Value<String?> coverPhotoPath = const Value.absent(),
     Value<String?> clayBody = const Value.absent(),
     Value<String?> firingTemp = const Value.absent(),
@@ -332,6 +368,7 @@ class Piece extends DataClass implements Insertable<Piece> {
     id: id ?? this.id,
     title: title ?? this.title,
     description: description.present ? description.value : this.description,
+    progressNote: progressNote.present ? progressNote.value : this.progressNote,
     coverPhotoPath: coverPhotoPath.present
         ? coverPhotoPath.value
         : this.coverPhotoPath,
@@ -347,6 +384,9 @@ class Piece extends DataClass implements Insertable<Piece> {
       description: data.description.present
           ? data.description.value
           : this.description,
+      progressNote: data.progressNote.present
+          ? data.progressNote.value
+          : this.progressNote,
       coverPhotoPath: data.coverPhotoPath.present
           ? data.coverPhotoPath.value
           : this.coverPhotoPath,
@@ -365,6 +405,7 @@ class Piece extends DataClass implements Insertable<Piece> {
           ..write('id: $id, ')
           ..write('title: $title, ')
           ..write('description: $description, ')
+          ..write('progressNote: $progressNote, ')
           ..write('coverPhotoPath: $coverPhotoPath, ')
           ..write('clayBody: $clayBody, ')
           ..write('firingTemp: $firingTemp, ')
@@ -379,6 +420,7 @@ class Piece extends DataClass implements Insertable<Piece> {
     id,
     title,
     description,
+    progressNote,
     coverPhotoPath,
     clayBody,
     firingTemp,
@@ -392,6 +434,7 @@ class Piece extends DataClass implements Insertable<Piece> {
           other.id == this.id &&
           other.title == this.title &&
           other.description == this.description &&
+          other.progressNote == this.progressNote &&
           other.coverPhotoPath == this.coverPhotoPath &&
           other.clayBody == this.clayBody &&
           other.firingTemp == this.firingTemp &&
@@ -403,6 +446,7 @@ class PiecesCompanion extends UpdateCompanion<Piece> {
   final Value<int> id;
   final Value<String> title;
   final Value<String?> description;
+  final Value<String?> progressNote;
   final Value<String?> coverPhotoPath;
   final Value<String?> clayBody;
   final Value<String?> firingTemp;
@@ -412,6 +456,7 @@ class PiecesCompanion extends UpdateCompanion<Piece> {
     this.id = const Value.absent(),
     this.title = const Value.absent(),
     this.description = const Value.absent(),
+    this.progressNote = const Value.absent(),
     this.coverPhotoPath = const Value.absent(),
     this.clayBody = const Value.absent(),
     this.firingTemp = const Value.absent(),
@@ -422,6 +467,7 @@ class PiecesCompanion extends UpdateCompanion<Piece> {
     this.id = const Value.absent(),
     required String title,
     this.description = const Value.absent(),
+    this.progressNote = const Value.absent(),
     this.coverPhotoPath = const Value.absent(),
     this.clayBody = const Value.absent(),
     this.firingTemp = const Value.absent(),
@@ -434,6 +480,7 @@ class PiecesCompanion extends UpdateCompanion<Piece> {
     Expression<int>? id,
     Expression<String>? title,
     Expression<String>? description,
+    Expression<String>? progressNote,
     Expression<String>? coverPhotoPath,
     Expression<String>? clayBody,
     Expression<String>? firingTemp,
@@ -444,6 +491,7 @@ class PiecesCompanion extends UpdateCompanion<Piece> {
       if (id != null) 'id': id,
       if (title != null) 'title': title,
       if (description != null) 'description': description,
+      if (progressNote != null) 'progress_note': progressNote,
       if (coverPhotoPath != null) 'cover_photo_path': coverPhotoPath,
       if (clayBody != null) 'clay_body': clayBody,
       if (firingTemp != null) 'firing_temp': firingTemp,
@@ -456,6 +504,7 @@ class PiecesCompanion extends UpdateCompanion<Piece> {
     Value<int>? id,
     Value<String>? title,
     Value<String?>? description,
+    Value<String?>? progressNote,
     Value<String?>? coverPhotoPath,
     Value<String?>? clayBody,
     Value<String?>? firingTemp,
@@ -466,6 +515,7 @@ class PiecesCompanion extends UpdateCompanion<Piece> {
       id: id ?? this.id,
       title: title ?? this.title,
       description: description ?? this.description,
+      progressNote: progressNote ?? this.progressNote,
       coverPhotoPath: coverPhotoPath ?? this.coverPhotoPath,
       clayBody: clayBody ?? this.clayBody,
       firingTemp: firingTemp ?? this.firingTemp,
@@ -485,6 +535,9 @@ class PiecesCompanion extends UpdateCompanion<Piece> {
     }
     if (description.present) {
       map['description'] = Variable<String>(description.value);
+    }
+    if (progressNote.present) {
+      map['progress_note'] = Variable<String>(progressNote.value);
     }
     if (coverPhotoPath.present) {
       map['cover_photo_path'] = Variable<String>(coverPhotoPath.value);
@@ -510,6 +563,7 @@ class PiecesCompanion extends UpdateCompanion<Piece> {
           ..write('id: $id, ')
           ..write('title: $title, ')
           ..write('description: $description, ')
+          ..write('progressNote: $progressNote, ')
           ..write('coverPhotoPath: $coverPhotoPath, ')
           ..write('clayBody: $clayBody, ')
           ..write('firingTemp: $firingTemp, ')
@@ -1765,6 +1819,7 @@ typedef $$PiecesTableCreateCompanionBuilder =
       Value<int> id,
       required String title,
       Value<String?> description,
+      Value<String?> progressNote,
       Value<String?> coverPhotoPath,
       Value<String?> clayBody,
       Value<String?> firingTemp,
@@ -1776,6 +1831,7 @@ typedef $$PiecesTableUpdateCompanionBuilder =
       Value<int> id,
       Value<String> title,
       Value<String?> description,
+      Value<String?> progressNote,
       Value<String?> coverPhotoPath,
       Value<String?> clayBody,
       Value<String?> firingTemp,
@@ -1846,6 +1902,11 @@ class $$PiecesTableFilterComposer
 
   ColumnFilters<String> get description => $composableBuilder(
     column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get progressNote => $composableBuilder(
+    column: $table.progressNote,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1949,6 +2010,11 @@ class $$PiecesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get progressNote => $composableBuilder(
+    column: $table.progressNote,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get coverPhotoPath => $composableBuilder(
     column: $table.coverPhotoPath,
     builder: (column) => ColumnOrderings(column),
@@ -1992,6 +2058,11 @@ class $$PiecesTableAnnotationComposer
 
   GeneratedColumn<String> get description => $composableBuilder(
     column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get progressNote => $composableBuilder(
+    column: $table.progressNote,
     builder: (column) => column,
   );
 
@@ -2096,6 +2167,7 @@ class $$PiecesTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<String> title = const Value.absent(),
                 Value<String?> description = const Value.absent(),
+                Value<String?> progressNote = const Value.absent(),
                 Value<String?> coverPhotoPath = const Value.absent(),
                 Value<String?> clayBody = const Value.absent(),
                 Value<String?> firingTemp = const Value.absent(),
@@ -2105,6 +2177,7 @@ class $$PiecesTableTableManager
                 id: id,
                 title: title,
                 description: description,
+                progressNote: progressNote,
                 coverPhotoPath: coverPhotoPath,
                 clayBody: clayBody,
                 firingTemp: firingTemp,
@@ -2116,6 +2189,7 @@ class $$PiecesTableTableManager
                 Value<int> id = const Value.absent(),
                 required String title,
                 Value<String?> description = const Value.absent(),
+                Value<String?> progressNote = const Value.absent(),
                 Value<String?> coverPhotoPath = const Value.absent(),
                 Value<String?> clayBody = const Value.absent(),
                 Value<String?> firingTemp = const Value.absent(),
@@ -2125,6 +2199,7 @@ class $$PiecesTableTableManager
                 id: id,
                 title: title,
                 description: description,
+                progressNote: progressNote,
                 coverPhotoPath: coverPhotoPath,
                 clayBody: clayBody,
                 firingTemp: firingTemp,

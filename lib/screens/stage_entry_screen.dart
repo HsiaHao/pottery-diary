@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pottery_diary/database/app_database.dart';
@@ -7,6 +5,7 @@ import 'package:pottery_diary/models/stage_status.dart';
 import 'package:pottery_diary/models/stage_type.dart';
 import 'package:pottery_diary/providers/providers.dart';
 import 'package:pottery_diary/services/photo_storage.dart';
+import 'package:pottery_diary/widgets/safe_file_image.dart';
 
 class StageEntryScreen extends ConsumerStatefulWidget {
   const StageEntryScreen({
@@ -447,12 +446,7 @@ class _Thumb extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
-            child: Image.file(
-              File(path),
-              width: 100,
-              height: 100,
-              fit: BoxFit.cover,
-            ),
+            child: SafeFileImage(path: path, width: 100, height: 100),
           ),
           if (isNew && onRemove != null)
             Positioned(

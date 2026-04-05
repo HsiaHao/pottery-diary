@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pottery_diary/database/app_database.dart';
@@ -7,6 +5,9 @@ import 'package:pottery_diary/models/stage_status.dart';
 import 'package:pottery_diary/models/stage_type.dart';
 import 'package:pottery_diary/providers/providers.dart';
 import 'package:pottery_diary/screens/stage_entry_screen.dart';
+import 'package:pottery_diary/services/photo_storage.dart';
+import 'package:pottery_diary/widgets/photo_carousel.dart';
+import 'package:pottery_diary/widgets/safe_file_image.dart';
 
 class PieceDetailScreen extends ConsumerWidget {
   const PieceDetailScreen({super.key, required this.pieceId});
@@ -61,6 +62,9 @@ class PieceDetailScreen extends ConsumerWidget {
                               ),
                           ],
                         ),
+                      const SizedBox(height: 12),
+                      // Single progress note
+                      _ProgressNoteCard(piece: piece),
                     ],
                   ),
                 ),
@@ -155,10 +159,7 @@ class _HeroAppBar extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             piece.coverPhotoPath != null
-                ? Image.file(
-                    File(piece.coverPhotoPath!),
-                    fit: BoxFit.cover,
-                  )
+                ? SafeFileImage(path: piece.coverPhotoPath!)
                 : Container(color: const Color(0xFF4A3828)),
             // gradient for legibility
             const DecoratedBox(
@@ -373,41 +374,17 @@ class _StageCard extends ConsumerWidget {
                 ],
               ),
             ),
-          // Photos with long-press to set cover
-          if (photos.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            SizedBox(
-              height: 100,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: photos.length,
-                separatorBuilder: (context, index) =>
-                    const SizedBox(width: 8),
-                itemBuilder: (context, i) => GestureDetector(
-                  onLongPress: () =>
-                      _setCover(context, ref, photos[i].localPath),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: Image.file(
-                      File(photos[i].localPath),
-                      width: 100,
-                      height: 100,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
-              ),
+          // Photo carousel (always shown so user can add photos inline)
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: PhotoCarousel(
+              photos: photos,
+              height: photos.isEmpty ? 120 : 180,
+              onAddPhoto: () => _addPhoto(context, ref),
+              onSetCover: (path) => _setCover(context, ref, path),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-              child: Text(
-                'Hold a photo to set as cover',
-                style: TextStyle(
-                    fontSize: 10, color: Colors.grey.shade400),
-              ),
-            ),
-          ],
+          ),
           Padding(
             padding: const EdgeInsets.all(12),
             child: OutlinedButton.icon(
@@ -436,6 +413,24 @@ class _StageCard extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _addPhoto(BuildContext context, WidgetRef ref) async {
+    if (stage == null) return;
+    final choice = await showModalBottomSheet<_PhotoSource>(
+      context: context,
+      builder: (_) => const _PhotoSourceSheet(),
+    );
+    if (choice == null || !context.mounted) return;
+    final path = choice == _PhotoSource.camera
+        ? await PhotoStorage.pickFromCamera()
+        : await PhotoStorage.pickFromGallery();
+    if (path == null || !context.mounted) return;
+    await ref.read(pieceRepositoryProvider).addPhoto(
+          stageId: stage!.id,
+          pieceId: pieceId,
+          localPath: path,
+        );
   }
 
   Future<void> _setCover(
@@ -563,6 +558,165 @@ class _InfoChip extends StatelessWidget {
                   fontSize: 12,
                   color: Colors.grey.shade700,
                   fontWeight: FontWeight.w500)),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Progress note card (single note for the whole piece, editable inline)
+// ---------------------------------------------------------------------------
+
+class _ProgressNoteCard extends ConsumerStatefulWidget {
+  const _ProgressNoteCard({required this.piece});
+
+  final Piece piece;
+
+  @override
+  ConsumerState<_ProgressNoteCard> createState() => _ProgressNoteCardState();
+}
+
+class _ProgressNoteCardState extends ConsumerState<_ProgressNoteCard> {
+  bool _editing = false;
+  late TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller =
+        TextEditingController(text: widget.piece.progressNote ?? '');
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    await ref.read(pieceRepositoryProvider).updateProgressNote(
+          widget.piece.id,
+          _controller.text.trim().isEmpty ? null : _controller.text.trim(),
+        );
+    setState(() => _editing = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasNote = widget.piece.progressNote != null &&
+        widget.piece.progressNote!.isNotEmpty;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                'Progress Notes',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF4A3828),
+                    ),
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: () {
+                  if (_editing) {
+                    _save();
+                  } else {
+                    setState(() => _editing = true);
+                  }
+                },
+                child: Text(
+                  _editing ? 'Save' : 'Edit',
+                  style: const TextStyle(
+                    color: Color(0xFFCC4A2A),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (_editing)
+            TextField(
+              controller: _controller,
+              autofocus: true,
+              textCapitalization: TextCapitalization.sentences,
+              maxLines: 5,
+              decoration: InputDecoration(
+                hintText: 'Document your journey…',
+                hintStyle:
+                    TextStyle(color: Colors.grey.shade400, fontSize: 13),
+                filled: true,
+                fillColor: const Color(0xFFF7F4F0),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.all(10),
+              ),
+            )
+          else if (hasNote)
+            Text(
+              widget.piece.progressNote!,
+              style: TextStyle(
+                color: Colors.grey.shade700,
+                fontSize: 13,
+                height: 1.5,
+              ),
+            )
+          else
+            GestureDetector(
+              onTap: () => setState(() => _editing = true),
+              child: Text(
+                'Tap to add a progress note…',
+                style: TextStyle(
+                  color: Colors.grey.shade400,
+                  fontSize: 13,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Photo source helpers
+// ---------------------------------------------------------------------------
+
+enum _PhotoSource { camera, gallery }
+
+class _PhotoSourceSheet extends StatelessWidget {
+  const _PhotoSourceSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.camera_alt_outlined),
+            title: const Text('Take Photo'),
+            onTap: () => Navigator.pop(context, _PhotoSource.camera),
+          ),
+          ListTile(
+            leading: const Icon(Icons.photo_library_outlined),
+            title: const Text('Choose from Gallery'),
+            onTap: () => Navigator.pop(context, _PhotoSource.gallery),
+          ),
         ],
       ),
     );

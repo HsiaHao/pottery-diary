@@ -15,6 +15,8 @@ class Pieces extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get title => text()();
   TextColumn get description => text().nullable()();
+  // Single shared progress note for the piece
+  TextColumn get progressNote => text().nullable()();
   TextColumn get coverPhotoPath => text().nullable()();
   TextColumn get clayBody => text().nullable()();
   TextColumn get firingTemp => text().nullable()();
@@ -69,7 +71,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -79,6 +81,9 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(pieces, pieces.clayBody);
             await m.addColumn(pieces, pieces.firingTemp);
             await m.addColumn(stages, stages.title);
+          }
+          if (from < 4) {
+            await m.addColumn(pieces, pieces.progressNote);
           }
           if (from < 3) {
             await m.addColumn(stages, stages.status);

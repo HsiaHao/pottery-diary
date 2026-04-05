@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pottery_diary/database/app_database.dart';
@@ -7,6 +5,7 @@ import 'package:pottery_diary/models/stage_status.dart';
 import 'package:pottery_diary/models/stage_type.dart';
 import 'package:pottery_diary/providers/providers.dart';
 import 'package:pottery_diary/screens/piece_detail_screen.dart';
+import 'package:pottery_diary/widgets/safe_file_image.dart';
 
 class PieceCard extends ConsumerWidget {
   const PieceCard({super.key, required this.piece});
@@ -66,28 +65,22 @@ class PieceCard extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 10),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-              child: Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: [
-                  ...StageType.values.map((type) {
-                    final stage = stages
-                        .where((s) => s.stageType == type.name)
-                        .firstOrNull;
-                    final status = StageStatus.fromString(stage?.status);
-                    return _StageChip(
-                      label: type.shortLabel,
-                      status: stage == null ? null : status,
-                    );
-                  }),
-                  ...glazes.map(
-                    (g) => _GlazeChip(name: g.glazeName),
-                  ),
-                ],
+            // Inline stage status row
+            _InlineStageRow(pieceId: piece.id, stages: stages),
+            if (glazes.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 0, 14, 0),
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: glazes
+                      .map((g) => _GlazeChip(name: g.glazeName))
+                      .toList(),
+                ),
               ),
-            ),
+            ],
+            const SizedBox(height: 12),
           ],
         ),
       ),
@@ -103,6 +96,137 @@ class PieceCard extends ConsumerWidget {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Inline stage row — 3 stage buttons with tap-to-cycle status
+// ---------------------------------------------------------------------------
+
+class _InlineStageRow extends ConsumerWidget {
+  const _InlineStageRow({required this.pieceId, required this.stages});
+
+  final int pieceId;
+  final List<Stage> stages;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      child: Row(
+        children: StageType.values.map((type) {
+          final stage =
+              stages.where((s) => s.stageType == type.name).firstOrNull;
+          final status = StageStatus.fromString(stage?.status);
+          return Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(
+                right: type != StageType.glazeFired ? 6 : 0,
+              ),
+              child: _StageButton(
+                stageType: type,
+                status: stage == null ? null : status,
+                onTap: () => _cycleStatus(context, ref, stage, type),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Future<void> _cycleStatus(
+    BuildContext context,
+    WidgetRef ref,
+    Stage? stage,
+    StageType type,
+  ) async {
+    final repo = ref.read(pieceRepositoryProvider);
+
+    if (stage == null) {
+      // Create stage as inProgress
+      final stageId = await repo.createStage(
+        pieceId: pieceId,
+        stageType: type,
+        status: StageStatus.inProgress,
+      );
+      await repo.setStageStatus(stageId, StageStatus.inProgress);
+      return;
+    }
+
+    final current = StageStatus.fromString(stage.status);
+    final next = switch (current) {
+      StageStatus.inProgress => StageStatus.complete,
+      StageStatus.complete => StageStatus.inProgress,
+      StageStatus.failed => StageStatus.inProgress,
+    };
+    await repo.setStageStatus(stage.id, next);
+  }
+}
+
+class _StageButton extends StatelessWidget {
+  const _StageButton({
+    required this.stageType,
+    required this.status,
+    required this.onTap,
+  });
+
+  final StageType stageType;
+  final StageStatus? status; // null = not started
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color bg;
+    final Color fg;
+    final IconData icon;
+
+    switch (status) {
+      case StageStatus.complete:
+        bg = const Color(0xFFE8F5E9);
+        fg = Colors.green.shade700;
+        icon = Icons.check_circle;
+      case StageStatus.failed:
+        bg = const Color(0xFFFFEBEE);
+        fg = Colors.red.shade700;
+        icon = Icons.cancel;
+      case StageStatus.inProgress:
+        bg = const Color(0xFFFFF3E0);
+        fg = Colors.orange.shade700;
+        icon = Icons.radio_button_checked;
+      case null:
+        bg = const Color(0xFFF5F5F5);
+        fg = Colors.grey.shade400;
+        icon = Icons.radio_button_unchecked;
+    }
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 7),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: fg),
+            const SizedBox(height: 3),
+            Text(
+              stageType.shortLabel,
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w700,
+                color: fg,
+                letterSpacing: 0.3,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _CoverPhoto extends StatelessWidget {
   const _CoverPhoto({required this.path, required this.height});
 
@@ -114,11 +238,10 @@ class _CoverPhoto extends StatelessWidget {
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
       child: path != null
-          ? Image.file(
-              File(path!),
+          ? SafeFileImage(
+              path: path!,
               height: height,
               width: double.infinity,
-              fit: BoxFit.cover,
             )
           : Container(
               height: height,
@@ -130,51 +253,6 @@ class _CoverPhoto extends StatelessWidget {
                 color: Color(0xFFBFAFA0),
               ),
             ),
-    );
-  }
-}
-
-class _StageChip extends StatelessWidget {
-  const _StageChip({required this.label, required this.status});
-
-  final String label;
-  final StageStatus? status; // null = not started
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final Color bg;
-    final Color fg;
-    switch (status) {
-      case StageStatus.complete:
-        bg = scheme.primary.withAlpha(26);
-        fg = scheme.primary;
-      case StageStatus.failed:
-        bg = Colors.red.withAlpha(26);
-        fg = Colors.red.shade700;
-      case StageStatus.inProgress:
-        bg = Colors.orange.withAlpha(26);
-        fg = Colors.orange.shade700;
-      case null:
-        bg = Colors.grey.withAlpha(20);
-        fg = Colors.grey.shade500;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: fg,
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.5,
-        ),
-      ),
     );
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pottery_diary/providers/providers.dart';
 import 'package:pottery_diary/screens/create_piece_screen.dart';
+import 'package:pottery_diary/screens/search_screen.dart';
 import 'package:pottery_diary/widgets/piece_card.dart';
 
 class PiecesListScreen extends ConsumerWidget {
@@ -94,15 +95,22 @@ class PiecesListScreen extends ConsumerWidget {
         foregroundColor: Colors.white,
         child: const Icon(Icons.add),
       ),
-      bottomNavigationBar: const _BottomNav(selectedIndex: 0),
+      bottomNavigationBar: _BottomNav(
+        selectedIndex: 0,
+        onSearchTap: () => Navigator.push(
+          context,
+          MaterialPageRoute<void>(builder: (_) => const SearchScreen()),
+        ),
+      ),
     );
   }
 }
 
 class _BottomNav extends StatelessWidget {
-  const _BottomNav({required this.selectedIndex});
+  const _BottomNav({required this.selectedIndex, required this.onSearchTap});
 
   final int selectedIndex;
+  final VoidCallback onSearchTap;
 
   @override
   Widget build(BuildContext context) {
@@ -115,6 +123,9 @@ class _BottomNav extends StatelessWidget {
         fontSize: 10,
         fontWeight: FontWeight.w600,
       ),
+      onTap: (i) {
+        if (i == 1) onSearchTap();
+      },
       items: const [
         BottomNavigationBarItem(
           icon: Icon(Icons.grid_view_rounded),
