@@ -1,18 +1,24 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:photo_manager/photo_manager.dart';
 import 'package:pottery_diary/database/app_database.dart';
 import 'package:pottery_diary/models/stage_status.dart';
 import 'package:pottery_diary/models/stage_type.dart';
 import 'package:pottery_diary/providers/providers.dart';
-import 'package:pottery_diary/screens/stage_entry_screen.dart';
 import 'package:pottery_diary/services/photo_storage.dart';
 import 'package:pottery_diary/widgets/photo_carousel.dart';
-import 'package:pottery_diary/widgets/safe_file_image.dart';
 
 class PieceDetailScreen extends ConsumerWidget {
-  const PieceDetailScreen({super.key, required this.pieceId});
+  const PieceDetailScreen({
+    super.key,
+    required this.pieceId,
+    this.scrollController,
+  });
 
   final int pieceId;
+  final ScrollController? scrollController;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -26,45 +32,74 @@ class PieceDetailScreen extends ConsumerWidget {
           if (piece == null) {
             return const Center(child: Text('Piece not found.'));
           }
+          final stages = stagesAsync.valueOrNull ?? [];
           return CustomScrollView(
+            controller: scrollController,
             slivers: [
-              _HeroAppBar(piece: piece, onDelete: () => _confirmDelete(context, ref)),
+              SliverToBoxAdapter(
+                child: Column(
+                  children: [
+                    // Drag handle
+                    const SizedBox(height: 12),
+                    Center(
+                      child: Container(
+                        width: 36,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    // Title row
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              piece.title,
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF2C2218),
+                              ),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () => _confirmDelete(context, ref),
+                            child: const Text('Delete', style: TextStyle(color: Color(0xFFCC4A2A))),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                  ],
+                ),
+              ),
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (piece.description != null &&
-                          piece.description!.isNotEmpty) ...[
-                        Text(
-                          piece.description!,
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyMedium
-                              ?.copyWith(color: Colors.grey.shade700),
-                        ),
-                        const SizedBox(height: 12),
-                      ],
-                      if (piece.clayBody != null || piece.firingTemp != null)
-                        Wrap(
-                          spacing: 8,
-                          children: [
-                            if (piece.clayBody != null)
-                              _InfoChip(
-                                icon: Icons.category_outlined,
-                                label: piece.clayBody!,
-                              ),
-                            if (piece.firingTemp != null)
-                              _InfoChip(
-                                icon: Icons.local_fire_department_outlined,
-                                label: piece.firingTemp!,
-                              ),
-                          ],
-                        ),
+                      // Cascade status row
+                      _CascadeStatusRow(pieceId: pieceId, stages: stages),
                       const SizedBox(height: 12),
-                      // Single progress note
+                      // Progress note (auto-save)
                       _ProgressNoteCard(piece: piece),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Icon(Icons.info_outline, size: 11, color: Colors.grey.shade400),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Hold a photo to set it as the preview image.',
+                            style: TextStyle(fontSize: 11, color: Colors.grey.shade400),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -132,76 +167,146 @@ class PieceDetailScreen extends ConsumerWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Hero app bar with cover photo
+// Cascade status row — tap a stage to set it (and auto-complete prior stages)
 // ---------------------------------------------------------------------------
 
-class _HeroAppBar extends StatelessWidget {
-  const _HeroAppBar({required this.piece, required this.onDelete});
+class _CascadeStatusRow extends ConsumerWidget {
+  const _CascadeStatusRow({required this.pieceId, required this.stages});
 
-  final Piece piece;
-  final VoidCallback onDelete;
+  final int pieceId;
+  final List<Stage> stages;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: StageType.values.map((type) {
+          final stage = stages.where((s) => s.stageType == type.name).firstOrNull;
+          final status = stage == null ? null : StageStatus.fromString(stage.status);
+          final isLast = type == StageType.finished;
+          return Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(right: isLast ? 0 : 8),
+              child: _CascadeStageButton(
+                stageType: type,
+                status: status,
+                onTap: () => _cascade(ref, type, status),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Future<void> _cascade(
+    WidgetRef ref,
+    StageType targetType,
+    StageStatus? currentStatus,
+  ) async {
+    final repo = ref.read(pieceRepositoryProvider);
+    const order = StageType.values;
+    final targetIndex = order.indexOf(targetType);
+
+    // Toggle: null/inProgress/failed → complete, complete → inProgress
+    final settingComplete = currentStatus != StageStatus.done;
+
+    for (int i = 0; i < order.length; i++) {
+      final type = order[i];
+      final stage = stages.where((s) => s.stageType == type.name).firstOrNull;
+
+      final StageStatus statusToSet;
+      if (i < targetIndex) {
+        // Stages before target: always complete when setting target to complete,
+        // leave untouched when setting target to inProgress
+        if (!settingComplete) continue;
+        statusToSet = StageStatus.done;
+      } else if (i == targetIndex) {
+        // The tapped stage toggles
+        statusToSet = settingComplete ? StageStatus.done : StageStatus.notDone;
+      } else {
+        // Stages after target: reset to inProgress if target is being un-done
+        if (settingComplete) continue;
+        statusToSet = StageStatus.notDone;
+      }
+
+      if (stage == null) {
+        await repo.createStage(
+          pieceId: pieceId,
+          stageType: type,
+          status: statusToSet,
+        );
+      } else {
+        await repo.setStageStatus(stage.id, statusToSet);
+      }
+    }
+  }
+}
+
+class _CascadeStageButton extends StatelessWidget {
+  const _CascadeStageButton({
+    required this.stageType,
+    required this.status,
+    required this.onTap,
+  });
+
+  final StageType stageType;
+  final StageStatus? status;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return SliverAppBar(
-      expandedHeight: 260,
-      pinned: true,
-      backgroundColor: const Color(0xFF2C2218),
-      foregroundColor: Colors.white,
-      actions: [
-        TextButton(
-          onPressed: onDelete,
-          child: const Text('Delete', style: TextStyle(color: Colors.white70)),
+    final Color bg;
+    final Color fg;
+    final IconData icon;
+
+    switch (status) {
+      case StageStatus.done:
+        bg = const Color(0xFFE8F5E9);
+        fg = Colors.green.shade700;
+        icon = Icons.check_circle_rounded;
+      case StageStatus.notDone:
+        bg = const Color(0xFFF5F5F5);
+        fg = Colors.grey.shade400;
+        icon = Icons.radio_button_unchecked;
+      case null:
+        bg = const Color(0xFFF5F5F5);
+        fg = Colors.grey.shade400;
+        icon = Icons.radio_button_unchecked;
+    }
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(10),
         ),
-      ],
-      flexibleSpace: FlexibleSpaceBar(
-        background: Stack(
-          fit: StackFit.expand,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            piece.coverPhotoPath != null
-                ? SafeFileImage(path: piece.coverPhotoPath!)
-                : Container(color: const Color(0xFF4A3828)),
-            // gradient for legibility
-            const DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Colors.transparent, Color(0xCC2C2218)],
-                  stops: [0.4, 1.0],
-                ),
+            Icon(icon, size: 20, color: fg),
+            const SizedBox(height: 4),
+            Text(
+              stageType.shortLabel,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: fg,
+                letterSpacing: 0.3,
               ),
             ),
-            Positioned(
-              bottom: 16,
-              left: 16,
-              right: 16,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _HeroStatusBadge(piece: piece),
-                  const SizedBox(height: 6),
-                  Text(
-                    piece.title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 26,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  if (piece.description != null && piece.description!.isNotEmpty)
-                    Text(
-                      piece.description!,
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 13,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                ],
+            if (status != null)
+              Text(
+                status!.label,
+                style: TextStyle(fontSize: 9, color: fg.withAlpha(180)),
               ),
-            ),
           ],
         ),
       ),
@@ -209,52 +314,8 @@ class _HeroAppBar extends StatelessWidget {
   }
 }
 
-class _HeroStatusBadge extends ConsumerWidget {
-  const _HeroStatusBadge({required this.piece});
-
-  final Piece piece;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final stages = ref.watch(stagesForPieceProvider(piece.id)).valueOrNull ?? [];
-    final latestComplete = StageType.values.lastWhere(
-      (t) =>
-          stages
-              .where((s) =>
-                  s.stageType == t.name &&
-                  StageStatus.fromString(s.status) == StageStatus.complete)
-              .isNotEmpty,
-      orElse: () => StageType.trimmed,
-    );
-    final allComplete = stages
-            .where((s) => StageStatus.fromString(s.status) == StageStatus.complete)
-            .length ==
-        3;
-    final label = allComplete
-        ? 'GLAZE FIRED'
-        : 'CURRENT STATUS: ${latestComplete.shortLabel}';
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: const Color(0xFFCC4A2A),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 9,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.8,
-        ),
-      ),
-    );
-  }
-}
-
 // ---------------------------------------------------------------------------
-// Stage card with photos
+// Stage card — no photo carousel, just info + Add Stage Update button
 // ---------------------------------------------------------------------------
 
 class _StageCard extends ConsumerWidget {
@@ -273,9 +334,7 @@ class _StageCard extends ConsumerWidget {
     final photos = stage != null
         ? (ref.watch(photosForStageProvider(stage!.id)).valueOrNull ?? [])
         : <Photo>[];
-
-    final status =
-        StageStatus.fromString(stage?.status);
+    final status = StageStatus.fromString(stage?.status);
     final isStarted = stage != null;
 
     return Container(
@@ -325,8 +384,7 @@ class _StageCard extends ConsumerWidget {
                     ?.copyWith(color: Colors.grey.shade600, height: 1.5),
               ),
             ),
-          // Failure reason
-          if (status == StageStatus.failed &&
+          if (status == StageStatus.notDone &&
               stage?.failureReason != null &&
               stage!.failureReason!.isNotEmpty)
             Padding(
@@ -341,8 +399,7 @@ class _StageCard extends ConsumerWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.info_outline,
-                        size: 14, color: Colors.red.shade400),
+                    Icon(Icons.info_outline, size: 14, color: Colors.red.shade400),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
@@ -358,7 +415,6 @@ class _StageCard extends ConsumerWidget {
                 ),
               ),
             ),
-          // Finish time
           if (stage?.finishedAt != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
@@ -368,74 +424,69 @@ class _StageCard extends ConsumerWidget {
                   const SizedBox(width: 4),
                   Text(
                     'Finished ${_fmtDate(stage!.finishedAt!)}',
-                    style: TextStyle(
-                        fontSize: 11, color: Colors.grey.shade500),
+                    style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
                   ),
                 ],
               ),
             ),
-          // Photo carousel (always shown so user can add photos inline)
+          // Photo carousel — 3:4 ratio matching grid cards
           const SizedBox(height: 10),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: PhotoCarousel(
               photos: photos,
-              height: photos.isEmpty ? 120 : 180,
+              aspectRatio: 3 / 4,
               onAddPhoto: () => _addPhoto(context, ref),
               onSetCover: (path) => _setCover(context, ref, path),
+              onDeletePhoto: (photo) => _deletePhoto(ref, photo),
+              widthFactor: 0.5,
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: OutlinedButton.icon(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute<void>(
-                  builder: (_) => StageEntryScreen(
-                    pieceId: pieceId,
-                    stageType: stageType,
-                    existingStage: stage,
-                  ),
-                ),
-              ),
-              icon: const Icon(Icons.add, size: 16),
-              label: const Text('Add Stage Update'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFFCC4A2A),
-                side: const BorderSide(color: Color(0xFFCC4A2A)),
-                minimumSize: const Size.fromHeight(40),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            ),
-          ),
+          const SizedBox(height: 4),
         ],
       ),
     );
   }
 
   Future<void> _addPhoto(BuildContext context, WidgetRef ref) async {
-    if (stage == null) return;
-    final choice = await showModalBottomSheet<_PhotoSource>(
+    // Ensure stage exists before adding photo
+    int stageId;
+    if (stage == null) {
+      stageId = await ref.read(pieceRepositoryProvider).createStage(
+            pieceId: pieceId,
+            stageType: stageType,
+            status: StageStatus.notDone,
+          );
+    } else {
+      stageId = stage!.id;
+    }
+
+    if (!context.mounted) return;
+
+    final path = await showModalBottomSheet<String>(
       context: context,
-      builder: (_) => const _PhotoSourceSheet(),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const _PhotoPickerSheet(),
     );
-    if (choice == null || !context.mounted) return;
-    final path = choice == _PhotoSource.camera
-        ? await PhotoStorage.pickFromCamera()
-        : await PhotoStorage.pickFromGallery();
     if (path == null || !context.mounted) return;
     await ref.read(pieceRepositoryProvider).addPhoto(
-          stageId: stage!.id,
+          stageId: stageId,
           pieceId: pieceId,
           localPath: path,
         );
   }
 
+  Future<void> _deletePhoto(WidgetRef ref, Photo photo) async {
+    await ref.read(pieceRepositoryProvider).deletePhoto(photo.id);
+    await PhotoStorage.delete(photo.localPath);
+  }
+
   Future<void> _setCover(
       BuildContext context, WidgetRef ref, String localPath) async {
-    await ref.read(pieceRepositoryProvider).setPieceCoverPhoto(pieceId, localPath);
+    await ref
+        .read(pieceRepositoryProvider)
+        .setPieceCoverPhoto(pieceId, localPath);
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -455,6 +506,265 @@ class _StageCard extends ConsumerWidget {
   }
 }
 
+class _PhotoPickerSheet extends StatefulWidget {
+  const _PhotoPickerSheet();
+
+  @override
+  State<_PhotoPickerSheet> createState() => _PhotoPickerSheetState();
+}
+
+class _PhotoPickerSheetState extends State<_PhotoPickerSheet> {
+  List<AssetEntity> _recentAssets = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRecent();
+  }
+
+  Future<void> _loadRecent() async {
+    final permission = await PhotoManager.requestPermissionExtend();
+    if (!permission.isAuth && !permission.hasAccess) {
+      setState(() => _loading = false);
+      return;
+    }
+    final albums = await PhotoManager.getAssetPathList(
+      type: RequestType.image,
+      filterOption: FilterOptionGroup(
+        orders: [const OrderOption(type: OrderOptionType.createDate, asc: false)],
+      ),
+    );
+    if (albums.isEmpty) { setState(() => _loading = false); return; }
+    final assets = await albums.first.getAssetListRange(start: 0, end: 20);
+    setState(() { _recentAssets = assets; _loading = false; });
+  }
+
+  Future<void> _pickAsset(AssetEntity asset) async {
+    final file = await asset.file;
+    if (file == null || !mounted) return;
+    final path = await PhotoStorage.cropFile(file.path);
+    if (path != null && mounted) Navigator.pop(context, path);
+  }
+
+  Future<void> _camera() async {
+    final path = await PhotoStorage.pickFromCamera(crop: true);
+    if (path != null && mounted) Navigator.pop(context, path);
+  }
+
+  Future<void> _gallery() async {
+    final path = await PhotoStorage.pickFromGallery(crop: true);
+    if (path != null && mounted) Navigator.pop(context, path);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFFF7F4F0),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 36, height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text('Add Photo', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: Color(0xFF2C2218))),
+          const SizedBox(height: 14),
+          if (_loading)
+            const SizedBox(height: 120, child: Center(child: CircularProgressIndicator(strokeWidth: 2)))
+          else if (_recentAssets.isNotEmpty) ...[
+            Text('Recent', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade600)),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 120,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: _recentAssets.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 6),
+                itemBuilder: (_, i) => _AssetTile(asset: _recentAssets[i], onTap: () => _pickAsset(_recentAssets[i])),
+              ),
+            ),
+            const SizedBox(height: 14),
+          ],
+          Row(
+            children: [
+              _SheetBtn(icon: Icons.camera_alt_outlined, label: 'Camera', onTap: _camera),
+              const SizedBox(width: 10),
+              _SheetBtn(icon: Icons.photo_library_outlined, label: 'All Photos', onTap: _gallery),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AssetTile extends StatefulWidget {
+  const _AssetTile({required this.asset, required this.onTap});
+  final AssetEntity asset;
+  final VoidCallback onTap;
+  @override
+  State<_AssetTile> createState() => _AssetTileState();
+}
+
+class _AssetTileState extends State<_AssetTile> {
+  Uint8List? _thumb;
+  @override
+  void initState() {
+    super.initState();
+    widget.asset.thumbnailDataWithSize(const ThumbnailSize(200, 267), quality: 80).then((b) {
+      if (mounted) setState(() => _thumb = b);
+    });
+  }
+  @override
+  Widget build(BuildContext context) {
+    const double h = 120, w = h * 3 / 4;
+    return GestureDetector(
+      onTap: widget.onTap,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: SizedBox(width: w, height: h,
+          child: _thumb != null
+              ? Image.memory(_thumb!, fit: BoxFit.cover, width: w, height: h)
+              : Container(color: const Color(0xFFE8E0D8)),
+        ),
+      ),
+    );
+  }
+}
+
+class _SheetBtn extends StatelessWidget {
+  const _SheetBtn({required this.icon, required this.label, required this.onTap});
+  final IconData icon; final String label; final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFCC4A2A).withAlpha(80), width: 1.5),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, color: const Color(0xFFCC4A2A), size: 18),
+          const SizedBox(width: 6),
+          Text(label, style: const TextStyle(color: Color(0xFFCC4A2A), fontSize: 12, fontWeight: FontWeight.w600)),
+        ]),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Progress note — auto-saves on focus lost, no Edit/Save buttons
+// ---------------------------------------------------------------------------
+
+class _ProgressNoteCard extends ConsumerStatefulWidget {
+  const _ProgressNoteCard({required this.piece});
+
+  final Piece piece;
+
+  @override
+  ConsumerState<_ProgressNoteCard> createState() => _ProgressNoteCardState();
+}
+
+class _ProgressNoteCardState extends ConsumerState<_ProgressNoteCard> {
+  late final TextEditingController _controller;
+  late final FocusNode _focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.piece.progressNote ?? '');
+    _focusNode = FocusNode();
+    _focusNode.addListener(_onFocusChange);
+  }
+
+  @override
+  void dispose() {
+    _focusNode.removeListener(_onFocusChange);
+    _focusNode.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onFocusChange() {
+    if (!_focusNode.hasFocus) {
+      _save();
+    }
+  }
+
+  Future<void> _save() async {
+    await ref.read(pieceRepositoryProvider).updateProgressNote(
+          widget.piece.id,
+          _controller.text.trim().isEmpty ? null : _controller.text.trim(),
+        );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Progress Notes',
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF4A3828),
+                ),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _controller,
+            focusNode: _focusNode,
+            textCapitalization: TextCapitalization.sentences,
+            maxLines: null,
+            decoration: InputDecoration(
+              hintText: 'Tap to add a progress note…',
+              hintStyle: TextStyle(
+                color: Colors.grey.shade400,
+                fontSize: 13,
+                fontStyle: FontStyle.italic,
+              ),
+              border: InputBorder.none,
+              isDense: true,
+              contentPadding: EdgeInsets.zero,
+            ),
+            style: TextStyle(
+              color: Colors.grey.shade700,
+              fontSize: 13,
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Status badge
+// ---------------------------------------------------------------------------
+
 class _StatusBadge extends StatelessWidget {
   const _StatusBadge({required this.status});
 
@@ -462,16 +772,10 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = status == StageStatus.complete
-        ? Colors.green
-        : status == StageStatus.failed
-            ? Colors.red
-            : Colors.orange;
-    final icon = status == StageStatus.complete
+    final color = status == StageStatus.done ? Colors.green : Colors.grey;
+    final icon = status == StageStatus.done
         ? Icons.check_circle
-        : status == StageStatus.failed
-            ? Icons.cancel
-            : Icons.radio_button_checked;
+        : Icons.radio_button_unchecked;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -505,14 +809,18 @@ class _StageBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = {
+      StageType.formed: const Color(0xFFEDE0D0),
       StageType.trimmed: const Color(0xFFE8D5C0),
-      StageType.bisque: const Color(0xFFD5C8B8),
-      StageType.glazeFired: const Color(0xFFC8B8A8),
+      StageType.bisqued: const Color(0xFFD5C8B8),
+      StageType.glazed: const Color(0xFFC8B8A8),
+      StageType.finished: const Color(0xFF5C4A3A),
     };
     final textColors = {
+      StageType.formed: const Color(0xFF9B6E4C),
       StageType.trimmed: const Color(0xFF8B5E3C),
-      StageType.bisque: const Color(0xFF6B4E3C),
-      StageType.glazeFired: const Color(0xFF4A3828),
+      StageType.bisqued: const Color(0xFF6B4E3C),
+      StageType.glazed: const Color(0xFF4A3828),
+      StageType.finished: Colors.white,
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -528,196 +836,6 @@ class _StageBadge extends StatelessWidget {
           fontWeight: FontWeight.w700,
           letterSpacing: 0.5,
         ),
-      ),
-    );
-  }
-}
-
-class _InfoChip extends StatelessWidget {
-  const _InfoChip({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 13, color: Colors.grey.shade600),
-          const SizedBox(width: 5),
-          Text(label,
-              style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey.shade700,
-                  fontWeight: FontWeight.w500)),
-        ],
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Progress note card (single note for the whole piece, editable inline)
-// ---------------------------------------------------------------------------
-
-class _ProgressNoteCard extends ConsumerStatefulWidget {
-  const _ProgressNoteCard({required this.piece});
-
-  final Piece piece;
-
-  @override
-  ConsumerState<_ProgressNoteCard> createState() => _ProgressNoteCardState();
-}
-
-class _ProgressNoteCardState extends ConsumerState<_ProgressNoteCard> {
-  bool _editing = false;
-  late TextEditingController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller =
-        TextEditingController(text: widget.piece.progressNote ?? '');
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  Future<void> _save() async {
-    await ref.read(pieceRepositoryProvider).updateProgressNote(
-          widget.piece.id,
-          _controller.text.trim().isEmpty ? null : _controller.text.trim(),
-        );
-    setState(() => _editing = false);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final hasNote = widget.piece.progressNote != null &&
-        widget.piece.progressNote!.isNotEmpty;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(
-                'Progress Notes',
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF4A3828),
-                    ),
-              ),
-              const Spacer(),
-              GestureDetector(
-                onTap: () {
-                  if (_editing) {
-                    _save();
-                  } else {
-                    setState(() => _editing = true);
-                  }
-                },
-                child: Text(
-                  _editing ? 'Save' : 'Edit',
-                  style: const TextStyle(
-                    color: Color(0xFFCC4A2A),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          if (_editing)
-            TextField(
-              controller: _controller,
-              autofocus: true,
-              textCapitalization: TextCapitalization.sentences,
-              maxLines: 5,
-              decoration: InputDecoration(
-                hintText: 'Document your journey…',
-                hintStyle:
-                    TextStyle(color: Colors.grey.shade400, fontSize: 13),
-                filled: true,
-                fillColor: const Color(0xFFF7F4F0),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.all(10),
-              ),
-            )
-          else if (hasNote)
-            Text(
-              widget.piece.progressNote!,
-              style: TextStyle(
-                color: Colors.grey.shade700,
-                fontSize: 13,
-                height: 1.5,
-              ),
-            )
-          else
-            GestureDetector(
-              onTap: () => setState(() => _editing = true),
-              child: Text(
-                'Tap to add a progress note…',
-                style: TextStyle(
-                  color: Colors.grey.shade400,
-                  fontSize: 13,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Photo source helpers
-// ---------------------------------------------------------------------------
-
-enum _PhotoSource { camera, gallery }
-
-class _PhotoSourceSheet extends StatelessWidget {
-  const _PhotoSourceSheet();
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            leading: const Icon(Icons.camera_alt_outlined),
-            title: const Text('Take Photo'),
-            onTap: () => Navigator.pop(context, _PhotoSource.camera),
-          ),
-          ListTile(
-            leading: const Icon(Icons.photo_library_outlined),
-            title: const Text('Choose from Gallery'),
-            onTap: () => Navigator.pop(context, _PhotoSource.gallery),
-          ),
-        ],
       ),
     );
   }

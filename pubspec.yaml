@@ -2,7 +2,7 @@ name: pottery_diary
 description: "A Flutter app for potters to document pieces across trimmed, bisque, and glaze-fired stages."
 publish_to: 'none'
 
-version: 1.0.0+1
+version: 1.0.0+2
 
 environment:
   sdk: ^3.11.4
@@ -23,6 +23,14 @@ dependencies:
 
   # Photos
   image_picker: ^1.1.2
+  image_cropper: ^9.0.0
+  photo_manager: ^3.3.0
+
+dependency_overrides:
+  # Pin iOS packages to pre-objective_c versions to avoid
+  # framework load failure on iOS 26 simulator
+  image_picker_ios: 0.8.12+2
+  path_provider_foundation: 2.4.4
 
 dev_dependencies:
   flutter_test:

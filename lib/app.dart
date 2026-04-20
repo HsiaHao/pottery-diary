@@ -8,6 +8,15 @@ class PotteryDiaryApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Pottery Diary',
+      themeMode: ThemeMode.light,
+      darkTheme: ThemeData(
+        brightness: Brightness.light,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF8B6B4A),
+          brightness: Brightness.light,
+        ),
+        useMaterial3: true,
+      ),
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF8B6B4A),

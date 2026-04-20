@@ -1,23 +1,21 @@
 enum StageStatus {
-  inProgress,
-  complete,
-  failed;
+  notDone,
+  done;
 
   static StageStatus fromString(String? value) {
-    return StageStatus.values.firstWhere(
-      (e) => e.name == value,
-      orElse: () => StageStatus.inProgress,
-    );
+    // Map old values to new ones for backwards compatibility
+    if (value == 'complete') return StageStatus.done;
+    if (value == 'done') return StageStatus.done;
+    return StageStatus.notDone;
   }
 
-  String get label {
-    switch (this) {
-      case StageStatus.inProgress:
-        return 'In Progress';
-      case StageStatus.complete:
-        return 'Complete';
-      case StageStatus.failed:
-        return 'Failed';
-    }
-  }
+  String get name => switch (this) {
+        StageStatus.notDone => 'notDone',
+        StageStatus.done => 'done',
+      };
+
+  String get label => switch (this) {
+        StageStatus.notDone => 'Not Done',
+        StageStatus.done => 'Done',
+      };
 }

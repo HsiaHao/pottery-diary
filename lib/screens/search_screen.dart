@@ -267,7 +267,7 @@ class _StagesSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final complete =
-        stages.where((s) => s.status == StageStatus.complete.name).length;
+        stages.where((s) => s.status == StageStatus.done.name).length;
     return Text(
       '$complete / 3 stages complete',
       style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
@@ -283,9 +283,9 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = status == StageStatus.complete
+    final color = status == StageStatus.done
         ? Colors.green
-        : status == StageStatus.failed
+        : status == StageStatus.notDone
             ? Colors.red
             : Colors.orange;
     return Row(

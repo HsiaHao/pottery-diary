@@ -113,7 +113,7 @@ class PieceRepository {
     required StageType stageType,
     String? title,
     String? description,
-    StageStatus status = StageStatus.inProgress,
+    StageStatus status = StageStatus.notDone,
     String? failureReason,
     DateTime? finishedAt,
   }) =>
@@ -162,12 +162,10 @@ class PieceRepository {
       (_db.update(_db.stages)..where((t) => t.id.equals(stageId))).write(
         StagesCompanion(
           status: Value(status.name),
-          failureReason: status == StageStatus.failed
-              ? Value(failureReason)
+          failureReason: const Value(null),
+          finishedAt: status == StageStatus.done
+              ? Value(finishedAt ?? DateTime.now())
               : const Value(null),
-          finishedAt: status == StageStatus.inProgress
-              ? const Value(null)
-              : Value(finishedAt ?? DateTime.now()),
         ),
       );
 

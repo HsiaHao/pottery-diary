@@ -107,7 +107,7 @@ class _StageEntryScreenState extends ConsumerState<StageEntryScreen> {
     final stage = widget.existingStage;
 
     // Resolve finishedAt: set now if status changed to complete/failed and no time chosen
-    final finishedAt = _status != StageStatus.inProgress
+    final finishedAt = _status != StageStatus.notDone
         ? (_finishedAt ?? DateTime.now())
         : null;
 
@@ -123,7 +123,7 @@ class _StageEntryScreenState extends ConsumerState<StageEntryScreen> {
             ? null
             : _notesController.text.trim(),
         status: _status,
-        failureReason: _status == StageStatus.failed
+        failureReason: _status == StageStatus.notDone
             ? _failureReasonController.text.trim().isEmpty
                 ? null
                 : _failureReasonController.text.trim()
@@ -141,7 +141,7 @@ class _StageEntryScreenState extends ConsumerState<StageEntryScreen> {
             ? null
             : _notesController.text.trim(),
         status: _status,
-        failureReason: _status == StageStatus.failed
+        failureReason: _status == StageStatus.notDone
             ? _failureReasonController.text.trim().isEmpty
                 ? null
                 : _failureReasonController.text.trim()
@@ -229,15 +229,15 @@ class _StageEntryScreenState extends ConsumerState<StageEntryScreen> {
             current: _status,
             onChanged: (s) => setState(() {
               _status = s;
-              if (s != StageStatus.inProgress && _finishedAt == null) {
+              if (s != StageStatus.notDone && _finishedAt == null) {
                 _finishedAt = DateTime.now();
               }
-              if (s == StageStatus.inProgress) _finishedAt = null;
+              if (s == StageStatus.notDone) _finishedAt = null;
             }),
           ),
 
           // ----- Failure reason -----
-          if (_status == StageStatus.failed) ...[
+          if (_status == StageStatus.notDone) ...[
             const SizedBox(height: 12),
             const _Label('Failure Reason'),
             const SizedBox(height: 6),
@@ -249,7 +249,7 @@ class _StageEntryScreenState extends ConsumerState<StageEntryScreen> {
           ],
 
           // ----- Finish time -----
-          if (_status != StageStatus.inProgress) ...[
+          if (_status != StageStatus.notDone) ...[
             const SizedBox(height: 12),
             const _Label('Finish Time'),
             const SizedBox(height: 6),
@@ -340,9 +340,9 @@ class _StatusSelector extends StatelessWidget {
     return Row(
       children: StageStatus.values.map((s) {
         final selected = s == current;
-        final color = s == StageStatus.complete
+        final color = s == StageStatus.done
             ? Colors.green
-            : s == StageStatus.failed
+            : s == StageStatus.notDone
                 ? Colors.red
                 : Colors.orange;
         return Expanded(
@@ -350,7 +350,7 @@ class _StatusSelector extends StatelessWidget {
             onTap: () => onChanged(s),
             child: Container(
               margin: EdgeInsets.only(
-                right: s != StageStatus.failed ? 6 : 0,
+                right: s != StageStatus.notDone ? 6 : 0,
               ),
               padding: const EdgeInsets.symmetric(vertical: 10),
               decoration: BoxDecoration(
@@ -365,9 +365,9 @@ class _StatusSelector extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
-                    s == StageStatus.complete
+                    s == StageStatus.done
                         ? Icons.check_circle_outline
-                        : s == StageStatus.failed
+                        : s == StageStatus.notDone
                             ? Icons.cancel_outlined
                             : Icons.radio_button_unchecked,
                     color: selected ? color : Colors.grey.shade400,
